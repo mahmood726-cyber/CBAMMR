@@ -1,0 +1,16 @@
+citHeader("To cite CBAMMR in publications use:")
+
+bibentry(
+  bibtype  = "Manual",
+  title    = "CBAMMR: Comprehensive Bayesian and Advanced Meta-Analysis Methods in R",
+  author   = "Mahmood Developer and Claude AI",
+  year     = "2025",
+  note     = "R package version 7.0.0",
+  url      = "https://github.com/mahmood726-cyber/CBAMMR",
+  textVersion = paste(
+    "Mahmood Developer and Claude AI (2025).",
+    "CBAMMR: Comprehensive Bayesian and Advanced Meta-Analysis Methods in R.",
+    "R package version 7.0.0.",
+    "https://github.com/mahmood726-cyber/CBAMMR"
+  )
+)

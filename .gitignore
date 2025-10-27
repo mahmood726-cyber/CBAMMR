@@ -1,0 +1,11 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+inst/doc
+doc
+Meta
+.DS_Store
+cbamm_results/
+cbamm_plots/

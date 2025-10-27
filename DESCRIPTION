@@ -1,0 +1,59 @@
+Package: CBAMMR
+Type: Package
+Title: Comprehensive Bayesian and Advanced Meta-Analysis Methods in R
+Version: 7.0.0
+Date: 2025-10-27
+Authors@R: c(
+    person("Mahmood", "Developer", email = "mahmood726@gmail.com", role = c("aut", "cre")),
+    person("Claude", "AI", role = "ctb")
+    )
+Description: A comprehensive framework for conducting advanced meta-analyses with
+    pairwise effect size calculation, transportability weighting, Hartung-Knapp-Sidik-Jonkman
+    adjustments, prediction intervals, publication bias assessment (PET-PEESE, selection models,
+    RoBMA), robust variance estimation (CR2 RVE), multivariate meta-analysis with correlation
+    sensitivity, rare-events methods (Peto OR, Mantel-Haenszel, GLMM), Bayesian model averaging
+    with stacking, meta-regression with natural splines, machine learning heterogeneity analysis,
+    and comprehensive diagnostic tools. Supports hazard ratios (HR), risk ratios (RR), odds ratios
+    (OR), risk differences (RD), mean differences (MD), and standardized mean differences (SMD).
+License: Apache License (>= 2.0)
+Encoding: UTF-8
+LazyData: true
+Depends:
+    R (>= 4.0.0)
+Imports:
+    metafor (>= 3.0.0),
+    dplyr (>= 1.0.0),
+    tidyr (>= 1.0.0),
+    tibble (>= 3.0.0),
+    purrr (>= 0.3.0),
+    readr (>= 2.0.0),
+    ggplot2 (>= 3.3.0),
+    patchwork (>= 1.1.0),
+    coda (>= 0.19.0),
+    splines,
+    stats,
+    utils,
+    parallel,
+    grDevices
+Suggests:
+    WeightIt (>= 0.12.0),
+    cobalt (>= 4.3.0),
+    brms (>= 2.16.0),
+    posterior (>= 1.2.0),
+    loo (>= 2.4.0),
+    rjags (>= 4.10),
+    clubSandwich (>= 0.5.0),
+    plotly (>= 4.10.0),
+    cluster (>= 2.1.0),
+    weightr (>= 2.0.0),
+    ranger (>= 0.13.0),
+    MASS (>= 7.3.0),
+    puniform (>= 0.2.0),
+    RoBMA (>= 2.0.0),
+    testthat (>= 3.0.0),
+    knitr (>= 1.30),
+    rmarkdown (>= 2.10)
+RoxygenNote: 7.2.0
+VignetteBuilder: knitr
+URL: https://github.com/mahmood726-cyber/CBAMMR
+BugReports: https://github.com/mahmood726-cyber/CBAMMR/issues
