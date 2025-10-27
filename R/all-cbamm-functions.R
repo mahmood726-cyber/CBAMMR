@@ -1,13 +1,25 @@
-# Complete CBAMM v7.0 Functions
-# This file contains all remaining analysis functions organized by category
-
-# Load the complete original code here
-# Due to character limits, you would include your full original code here
-# For now, I'll include the essential wrapper
+# Complete CBAMM v7.0 Analysis Pipeline
+# This file contains the main run_cbamm_analysis function that orchestrates all analyses
 
 #' Run Complete CBAMM Analysis
 #'
-#' Main analysis function that runs the full CBAMM pipeline
+#' Main analysis function that runs the full CBAMM v7.0 pipeline including:
+#' \itemize{
+#'   \item Data validation and preparation
+#'   \item Transportability weighting
+#'   \item GRADE-based down-weighting
+#'   \item Stratified and pooled meta-analyses
+#'   \item Robust variance estimation (CR2)
+#'   \item Multivariate meta-analysis
+#'   \item Rare events methods
+#'   \item Publication bias assessment
+#'   \item Bayesian analysis
+#'   \item Diagnostics and influence analysis
+#'   \item Meta-regression
+#'   \item Multiverse analysis
+#'   \item Comprehensive visualization
+#'   \item Manuscript-ready tables
+#' }
 #'
 #' @param data Data frame with study-level data
 #' @param target_population List with target population characteristics for transportability
@@ -34,6 +46,7 @@
 #'
 #' # View results
 #' print(results$results$summary_table)
+#' cbamm_show_all_plots(results)
 #' }
 run_cbamm_analysis <- function(data, target_population = NULL, config = setup_cbamm()) {
 
@@ -64,6 +77,7 @@ run_cbamm_analysis <- function(data, target_population = NULL, config = setup_cb
               paste(paste(names(table(data$study_type)), table(data$study_type), sep="="), collapse=", ")))
   cat(sprintf("Effect measure: %s\n", config$effect_measure))
 
+  # Keep counts if present for rare-events & exact logOR V
   data <- .standardize_pairwise_cols(data)
 
   # Transportability
@@ -82,40 +96,88 @@ run_cbamm_analysis <- function(data, target_population = NULL, config = setup_cb
     data$analysis_weights_grade <- apply_grade_weighting(data$analysis_weights, data$grade)
   }
 
-  # Run basic pooled analysis
+  # Analyses
   results <- list()
-  cat("\n=== POOLED META-ANALYSIS ===\n")
-  fit_t <- robust_rma(data$yi, data$se, data = data, method = "REML",
-                      weights = data$analysis_weights, use_hksj = config$use_hksj)
-  report_meta_result(fit_t, "Transport only", include_pi = TRUE, measure = config$effect_measure)
-  results$pooled <- list(transport = fit_t)
+  results$stratified <- run_stratified_analysis(data, config)
+  results$pooled     <- run_pooled_and_rve(data, config, features)
+  results$advisor    <- run_adaptive_advisor(data, results$pooled, config)
+  results$multiverse <- run_multiverse_analysis(data, config)
 
-  # PET-PEESE
-  cat("\n=== PET–PEESE ===\n")
-  pp <- pet_peese(data$yi, data$se)
-  tfun <- .cbamm_measure_meta(config$effect_measure)$transf
-  cat(sprintf("PET intercept: %.3f (effect %.3f) | PEESE intercept: %.3f (effect %.3f)\n",
-              pp["PET"], tfun(pp["PET"]), pp["PEESE"], tfun(pp["PEESE"])))
+  # Rare-events if signaled OR forced
+  rare_trigger <- config$force_rare_events || (config$effect_measure %in% c("OR","RR") && any(c("ai","bi","ci","di") %in% names(data)) && v$rare_hint)
+  if (rare_trigger) results$rare_events <- run_rare_event_models(data, config)
+
+  # PET–PEESE
+  cat("\n=== PET–PEESE (model scale; intercepts) ===\n")
+  pp <- pet_peese(data$yi, data$se); tfun <- .cbamm_measure_meta(config$effect_measure)$transf
+  cat(sprintf("PET intercept: %.3f (effect %.3f) | PEESE intercept: %.3f (effect %.3f)\n", pp["PET"], tfun(pp["PET"]), pp["PEESE"], tfun(pp["PEESE"])))
   results$pet_peese <- pp
 
-  cat("\n========================================\nCBAMM Analysis Complete\n========================================\n")
-  cat("\nNote: This is a simplified version. For full functionality, the complete\n")
-  cat("function implementations from your original code should be included in this file.\n")
+  # Publication bias suite
+  results$pub_bias <- run_publication_bias_sensitivity(data)
+  results$robma    <- run_robma(data)
+  results$puniform <- run_puniform(data)
+  results$small_study <- run_small_study_tests(results$pooled$transport)
 
+  # Diagnostics
+  results$robust_location <- run_robust_location(data)
+
+  # MV meta (assumed ρ) + optional exact logOR V
+  if (isTRUE(config$run_mv) && any(duplicated(data$study_id))) {
+    results$mv <- run_mv_meta(data, config, rho = config$mv_assumed_rho)
+    results$mv_rho <- run_mv_rho_sensitivity(data, config, rhos = config$mv_rho_grid)
+    if (isTRUE(config$exact_cov_logOR) && config$effect_measure=="OR" && all(c("ai","bi","ci","di") %in% names(data))) {
+      results$mv_exact <- run_mv_meta_exact_logOR(data, config)
+    }
+  }
+
+  # ML heterogeneity
+  if (isTRUE(config$use_ml)) results$ml <- run_ml_heterogeneity(data)
+
+  # Bayesian
+  results$bayesian <- run_bayesian_analysis(data, config, features)
+
+  # p-curve
+  results$pcurve <- run_pcurve(data)
+
+  # Influence / outliers
+  results$influence <- run_influence(results$pooled$transport)
+
+  # Meta-regression (NS on year)
+  if (isTRUE(config$run_meta_regression)) results$meta_regression <- run_meta_regression_ns(data, config)
+
+  # Plots
+  results$plots <- create_result_plots(results, data, config)
+
+  # Combined static layout
+  if (length(results$plots)) {
+    static_plots <- Filter(function(p) inherits(p, "ggplot"), results$plots)
+    if (length(static_plots) > 0) {
+      cat("\nGenerating combined plot layout...\n")
+      layout <- "
+      AB
+      CD
+      EF
+      "
+      if (requireNamespace("patchwork", quietly = TRUE)) {
+         try(print(patchwork::wrap_plots(static_plots) + patchwork::plot_layout(design = layout)), silent = TRUE)
+      } else {
+         message("[plot] patchwork not available, skipping combined layout.")
+      }
+    } else message("[plot] Only interactive plots generated; skipping static wrap.")
+  }
+
+  # Manuscript table
+  results$summary_table <- cbamm_make_summary_table(results, data, config)
+  if (config$export_results) {
+    if (!dir.exists(config$output_dir)) dir.create(config$output_dir, recursive = TRUE)
+    saveRDS(results, file.path(config$output_dir, "cbamm_results.rds"))
+    readr::write_csv(data, file.path(config$output_dir, "analysis_data.csv"))
+    if (!is.null(results$multiverse)) readr::write_csv(results$multiverse, file.path(config$output_dir, "multiverse_results.csv"))
+    if (!is.null(results$summary_table)) readr::write_csv(results$summary_table, file.path(config$output_dir, "cbamm_summary_table.csv"))
+    cat(sprintf("\nResults exported to: %s/\n", config$output_dir))
+  }
+
+  cat("\n========================================\nCBAMM Analysis Complete\n========================================\n")
   invisible(list(results = results, analysis_data = data))
 }
-
-# NOTE: Due to the extensive size of your original code (~3000+ lines),
-# you should paste the remaining function implementations here, including:
-# - All multivariate meta-analysis functions
-# - Rare events suite functions
-# - All diagnostic functions
-# - Publication bias functions (RoBMA, p-uniform, etc.)
-# - Bayesian analysis functions
-# - Meta-regression functions
-# - All visualization functions
-# - Simulation functions
-# - Table generation functions
-#
-# The package structure is now set up correctly, and you can add these
-# functions to this file or split them across multiple files as needed.
