@@ -1,0 +1,532 @@
+---
+title: "Introduction to CBAMMR: Comprehensive Meta-Analysis with 2025 Standards"
+author: "CBAMMR Development Team"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to CBAMMR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+## Overview
+
+CBAMMR (Comprehensive Bayesian and Advanced Meta-Analysis Methods in R) is a cutting-edge R package that implements state-of-the-art meta-analysis methods following 2024-2025 journal standards including PRISMA 2020, GRADE, and advanced clinical decision-making tools.
+
+### Key Features
+
+- **Comprehensive Methods**: 60+ functions covering all modern meta-analysis approaches
+- **Transportability Weighting**: Adjust results for target populations using entropy balancing
+- **GRADE Integration**: Auto-assessment of evidence certainty
+- **Clinical Decision Support**: Fragility index, NNT by risk, decision curves, MID assessment
+- **Reproducibility**: Complete environment capture and OSF/Zenodo export bundles
+- **Reporting Standards**: PRISMA 2020 compliance, power analysis
+- **Publication-Ready**: Tables, plots, and outputs for top-tier journals
+
+## Installation
+
+```{r eval=FALSE}
+# From GitHub
+devtools::install_github("mahmood726-cyber/CBAMMR")
+
+# Load package
+library(CBAMMR)
+```
+
+## Quick Start: Binary Outcome Meta-Analysis
+
+This example demonstrates a complete workflow from data to publication-ready outputs.
+
+### Step 1: Prepare Data
+
+```{r eval=FALSE}
+library(CBAMMR)
+
+# Simulate example data (or load your own)
+set.seed(123)
+data <- simulate_cbamm_binary(
+  n = 20,                    # 20 studies
+  measure = "OR",            # Odds ratio
+  true_effect = 0.70         # True OR = 0.70 (benefit)
+)
+
+# Add study characteristics for transportability
+data$age_mean <- rnorm(20, 60, 10)
+data$female_pct <- runif(20, 0.3, 0.7)
+data$study_type <- sample(c("RCT", "Obs"), 20, replace = TRUE, prob = c(0.6, 0.4))
+
+# View data structure
+head(data[, c("study", "ai", "bi", "ci", "di", "age_mean", "female_pct")])
+```
+
+### Step 2: Configure Analysis
+
+```{r eval=FALSE}
+# Set up analysis configuration
+config <- setup_cbamm(
+  effect_measure = "OR",
+  use_transport = TRUE,      # Transportability weighting
+  use_hksj = TRUE,          # Hartung-Knapp adjustment
+  use_bayesian = FALSE,     # Skip for quick example
+  run_mv = TRUE,            # Multivariate meta-analysis
+  export_results = TRUE     # Save all outputs
+)
+```
+
+### Step 3: Define Target Population
+
+```{r eval=FALSE}
+# Define characteristics of your target population
+target_pop <- list(
+  age_mean = 65,       # Average age of target population
+  female_pct = 0.52    # Proportion female in target population
+)
+```
+
+### Step 4: Run Complete Analysis
+
+```{r eval=FALSE}
+# Run comprehensive meta-analysis
+results <- run_cbamm_analysis(
+  data = data,
+  target_population = target_pop,
+  config = config
+)
+
+# The analysis runs:
+# 1. Transportability weighting (if target_pop provided)
+# 2. GRADE quality down-weighting
+# 3. Random-effects meta-analysis (REML with HKSJ)
+# 4. Stratified analysis (RCT vs Obs)
+# 5. Publication bias tests (Egger, PET-PEESE)
+# 6. Influence analysis
+# 7. Multivariate meta-analysis
+# 8. All visualizations
+# 9. Summary tables
+```
+
+### Step 5: View Main Results
+
+```{r eval=FALSE}
+# Main pooled effect (transportability-weighted)
+print(results$pooled$transport)
+
+# Access specific results:
+# - Pooled effect: HR 0.70 [95% CI: 0.60, 0.82]
+# - Heterogeneity: I² = 45%, τ² = 0.04
+# - Prediction interval: [0.50, 0.98]
+```
+
+## Advanced Features: 2025 Journal Standards
+
+### PRISMA 2020 Compliance
+
+Generate a complete PRISMA 2020 checklist for your manuscript:
+
+```{r eval=FALSE}
+# Generate PRISMA checklist
+prisma <- cbamm_prisma_checklist(
+  populated = TRUE,
+  results = results
+)
+
+# Save for manuscript
+readr::write_csv(prisma, "prisma_checklist.csv")
+
+# All 27 items with auto-population where possible
+View(prisma)
+```
+
+### GRADE Evidence Assessment
+
+Assess certainty of evidence with auto-assessment:
+
+```{r eval=FALSE}
+# Generate GRADE profile
+grade <- cbamm_grade_profile(
+  results = results,
+  data = data,
+  outcome_name = "All-cause mortality"
+)
+
+# View certainty rating
+print(grade$final_certainty)
+# e.g., "MODERATE" (started HIGH, downgraded for inconsistency)
+
+# View domain assessments
+print(grade$profile)
+#   Domain          Assessment      Explanation
+#   Risk of Bias    not serious     Based on study design
+#   Inconsistency   serious         I² = 45%
+#   Imprecision     not serious     CI width acceptable
+#   ...
+
+# Save for manuscript
+readr::write_csv(grade$profile, "grade_assessment.csv")
+```
+
+### Fragility Index (Statistical Robustness)
+
+Assess how robust your findings are to small changes:
+
+```{r eval=FALSE}
+# Calculate fragility index
+fragility <- cbamm_fragility_index(
+  results = results,
+  data = data
+)
+
+# Interpret
+print(fragility$interpretation)
+# "ROBUST: FI = 28. Result is robust and precise"
+# (FI ≥ 22 = highly robust; FI ≤ 5 = fragile)
+
+# Include in Discussion section:
+# "The fragility index was 28, indicating statistically robust findings."
+```
+
+### NNT Stratified by Patient Risk
+
+Show how absolute benefit varies by baseline risk:
+
+```{r eval=FALSE}
+# Calculate NNT across risk levels
+nnt_table <- cbamm_nnt_by_baseline_risk(
+  results = results,
+  baseline_risks = c(0.01, 0.05, 0.10, 0.20, 0.40)
+)
+
+# Results show:
+#   baseline_risk   nnt   direction
+#   0.01            500   NNTB     (low-risk patients)
+#   0.05            100   NNTB
+#   0.10             50   NNTB
+#   0.20             25   NNTB
+#   0.40             12   NNTB     (high-risk patients)
+
+# Interpretation: High-risk patients benefit much more than low-risk
+```
+
+### Clinical Significance (Beyond P-values)
+
+Assess whether effect exceeds minimal important difference:
+
+```{r eval=FALSE}
+# Define MID threshold
+# For OR: 0.10 means OR must be < 0.90 or > 1.10 to be clinically meaningful
+clinical_sig <- cbamm_clinical_significance(
+  results = results,
+  mid = 0.10,
+  mid_source = "Established clinical guidelines"
+)
+
+# View classification
+print(clinical_sig$classification)
+# "Clinically significant (robust)" - effect AND CI exceed MID
+# "Clinically significant (point estimate only)" - only effect exceeds MID
+# "Not clinically significant" - effect < MID threshold
+```
+
+### Prediction Interval Interpretation
+
+Assess whether treatment will work in different settings:
+
+```{r eval=FALSE}
+# Interpret PI with clinical thresholds
+pi_threshold <- cbamm_prediction_interval_threshold(
+  results = results,
+  benefit_threshold = 0.80,  # OR < 0.80 = clinically beneficial
+  harm_threshold = 1.20       # OR > 1.20 = harmful
+)
+
+# Results:
+print(pi_threshold$interpretation)
+# "High confidence: PI entirely in beneficial range"
+# Probability future study shows benefit: 92%
+
+# Include in Discussion:
+# "The 95% prediction interval [0.50, 0.98] suggests high confidence
+#  that the intervention will be beneficial in most clinical settings."
+```
+
+### Decision Curve Analysis (Net Clinical Benefit)
+
+Determine optimal treatment strategy across patient preferences:
+
+```{r eval=FALSE}
+# Calculate net benefit
+net_benefit <- cbamm_net_clinical_benefit(
+  results = results,
+  data = data,
+  baseline_risk = 0.15
+)
+
+# View decision curve
+plot(net_benefit$decision_curve)
+# Shows when intervention provides net benefit vs treat-all or treat-none
+
+# Optimal range
+print(net_benefit$optimal_threshold_range)
+# Intervention optimal for threshold probabilities: 0.10 - 0.60
+```
+
+### Power Analysis
+
+Calculate power or required sample size:
+
+```{r eval=FALSE}
+# What power do we have?
+power_achieved <- cbamm_power_analysis(
+  effect_size = results$pooled$transport$beta[1],
+  tau2 = results$pooled$transport$tau2,
+  n_studies = nrow(data),
+  avg_n_per_study = 100
+)
+print(power_achieved$power)  # e.g., 0.85 (85% power)
+
+# How many studies needed for 90% power?
+n_required <- cbamm_power_analysis(
+  effect_size = 0.3,
+  tau2 = 0.04,
+  power = 0.90,
+  avg_n_per_study = 100
+)
+print(n_required$n_studies_required)  # e.g., 32 studies
+```
+
+## Complete Manuscript Workflow
+
+This example shows a full workflow from analysis to publication:
+
+```{r eval=FALSE}
+# 1. Run comprehensive analysis
+results <- run_cbamm_analysis(data, target_pop, config)
+
+# 2. Generate all reporting outputs
+prisma <- cbamm_prisma_checklist(populated = TRUE, results = results)
+grade <- cbamm_grade_profile(results, data, outcome_name = "Mortality")
+power <- cbamm_power_analysis(0.3, 0.04, n_studies = 20)
+
+# 3. Clinical decision-making analyses
+fragility <- cbamm_fragility_index(results, data)
+nnt_table <- cbamm_nnt_by_baseline_risk(results, c(0.05, 0.10, 0.20, 0.40))
+clinical_sig <- cbamm_clinical_significance(results, mid = 0.10)
+pi_threshold <- cbamm_prediction_interval_threshold(results)
+net_benefit <- cbamm_net_clinical_benefit(results, data, baseline_risk = 0.15)
+
+# 4. Create reproducibility bundle for supplements
+cbamm_export_bundle(
+  results = results,
+  data = data,
+  config = config,
+  output_dir = "supplementary_materials",
+  include_data = TRUE
+)
+
+# 5. Results folder now contains:
+# - supplementary_materials/
+#   ├── data/analysis_data.csv
+#   ├── code/reproduce_analysis.R
+#   ├── results/*.csv
+#   ├── documentation/codebook.csv
+#   └── README.md
+
+# 6. Upload to OSF/Zenodo, get DOI, cite in manuscript
+```
+
+## Manuscript Text Examples
+
+### Methods Section
+
+```
+"Meta-analysis was conducted using CBAMMR v7.0 (https://github.com/mahmood726-cyber/CBAMMR)
+in R version 4.4.0. We used random-effects meta-analysis with restricted maximum likelihood
+(REML) estimation and Hartung-Knapp-Sidik-Jonkman adjustments. Transportability weights were
+applied to adjust estimates for our target population (mean age 65, 52% female) using entropy
+balancing. Certainty of evidence was assessed using GRADE. Statistical robustness was evaluated
+using the fragility index. Clinical significance was assessed relative to a minimal important
+difference of 0.10 on the odds ratio scale. Number needed to treat was calculated across baseline
+risk levels from 1% to 40%. All analyses followed PRISMA 2020 guidelines."
+```
+
+### Results Section
+
+```
+"Twenty studies (n = 4,500 participants) were included. The pooled odds ratio was 0.70
+(95% CI: 0.60, 0.82; I² = 45%, prediction interval: 0.50-0.98), indicating moderate
+heterogeneity. The effect exceeded our pre-specified minimal important difference threshold,
+suggesting clinical significance. The fragility index was 28, indicating robust findings.
+Number needed to treat varied from 500 in low-risk patients (1% baseline risk) to 12 in
+high-risk patients (40% baseline risk). GRADE assessment yielded MODERATE certainty evidence
+(downgraded for inconsistency). Decision curve analysis indicated net clinical benefit for
+threshold probabilities between 0.10 and 0.60."
+```
+
+### Discussion Section
+
+```
+"Our meta-analysis achieved 85% power to detect the observed effect. The prediction interval
+suggests high confidence that future studies will demonstrate benefit in most settings.
+Statistical robustness was confirmed by a fragility index of 28, well above the threshold
+of 22 for highly robust findings. The substantial variation in NNT by baseline risk
+highlights the importance of risk stratification in clinical decision-making."
+```
+
+## Continuous Outcomes Example
+
+For continuous outcomes (e.g., standardized mean difference):
+
+```{r eval=FALSE}
+# Simulate continuous data
+data_cont <- simulate_cbamm_continuous(
+  n = 18,
+  measure = "SMD",
+  true_effect = -0.40    # SMD = -0.40 (moderate benefit)
+)
+
+# Configure
+config_cont <- setup_cbamm(
+  effect_measure = "SMD",
+  use_hksj = TRUE
+)
+
+# Run analysis
+results_cont <- run_cbamm_analysis(
+  data = data_cont,
+  target_population = NULL,  # No transportability for this example
+  config = config_cont
+)
+
+# Assess clinical significance using MID
+# For SMD, Cohen's d = 0.20 is "small", 0.50 "medium", 0.80 "large"
+clinical_sig_cont <- cbamm_clinical_significance(
+  results = results_cont,
+  mid = 0.20,  # Small effect threshold
+  measure = "SMD",
+  mid_source = "Cohen's conventions"
+)
+```
+
+## Visualization
+
+CBAMMR automatically generates publication-ready plots:
+
+```{r eval=FALSE}
+# All plots saved to cbamm_outputs/
+# - Forest plot with study details
+# - Funnel plot for publication bias
+# - Leave-one-out sensitivity plot
+# - Cumulative meta-analysis plot
+# - Multiverse analysis (specification curve)
+# - Prediction interval visualization
+# - And more...
+
+# Display all plots interactively
+cbamm_show_all_plots(results)
+
+# Or save as PDF
+cbamm_show_all_plots(
+  results,
+  save_dir = "figures",
+  pdf_file = "meta_analysis_plots.pdf",
+  width = 10,
+  height = 8
+)
+```
+
+## Summary Tables
+
+Export publication-ready summary tables:
+
+```{r eval=FALSE}
+# Comprehensive results table
+summary_table <- cbamm_make_summary_table(
+  results = results,
+  data = data,
+  config = config
+)
+
+# Includes:
+# - Pooled effects (multiple methods)
+# - Heterogeneity statistics
+# - Publication bias tests
+# - Rare events methods (if applicable)
+# - Bayesian results (if run)
+# - E-values
+# - And more...
+
+# Save for manuscript
+readr::write_csv(summary_table, "results_table.csv")
+```
+
+## Tips for Best Results
+
+### 1. Data Preparation
+- Ensure effect size columns (yi, sei) OR raw data (ai, bi, ci, di) are present
+- Include study identifiers, year, sample sizes
+- Add study characteristics (age, sex, quality) for subgroup/meta-regression
+
+### 2. Configuration
+- Use `use_hksj = TRUE` for better CI coverage
+- Enable transportability if target population differs from study populations
+- Consider multivariate models for correlated outcomes
+
+### 3. Reporting
+- Always generate PRISMA checklist and GRADE profile
+- Include fragility index in Discussion
+- Present NNT stratified by risk for binary outcomes
+- Report prediction intervals, not just confidence intervals
+
+### 4. Reproducibility
+- Always export bundle for supplementary materials
+- Include exact package versions
+- Share data and code on OSF/Zenodo
+
+## Package Philosophy
+
+CBAMMR is designed with three core principles:
+
+1. **Comprehensiveness**: Implements all modern meta-analysis methods in one place
+2. **Reproducibility**: Complete environment tracking and easy sharing
+3. **Journal-Readiness**: Meets 2025 standards from PRISMA, GRADE, and top journals
+
+## Citation
+
+When using CBAMMR in publications, please cite:
+
+```
+CBAMMR v7.0: Comprehensive Bayesian and Advanced Meta-Analysis Methods in R
+https://github.com/mahmood726-cyber/CBAMMR
+```
+
+And cite the reporting standards you followed:
+
+- PRISMA 2020: Page MJ, et al. (2021). BMJ, 372:n71
+- GRADE: Guyatt GH, et al. (2011). J Clin Epidemiol, 64(4):383-394
+
+## Getting Help
+
+- Documentation: `?function_name` (e.g., `?cbamm_grade_profile`)
+- Examples: `example(run_cbamm_analysis)`
+- GitHub Issues: https://github.com/mahmood726-cyber/CBAMMR/issues
+
+## Additional Resources
+
+- PRISMA 2020: https://www.prisma-statement.org/
+- GRADE Handbook: https://gradepro.org/handbook
+- Cochrane Handbook: https://training.cochrane.org/handbook
+- Doing Meta-Analysis in R: https://bookdown.org/MathiasHarrer/Doing_Meta_Analysis_in_R/
+
+---
+
+**Package Version**: 7.0.0
+**Last Updated**: `r Sys.Date()`
