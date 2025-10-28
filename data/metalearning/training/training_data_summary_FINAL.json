@@ -1,0 +1,60 @@
+{
+  "total_samples": 5000,
+  "real_published": 275,
+  "synthetic": 4725,
+  "real_percentage": 5.5,
+  "sources": {
+    "real": 275,
+    "synthetic": 4725
+  },
+  "I2_stats": {
+    "mean": 44.871108,
+    "median": 44.28,
+    "std": 28.015557978203862,
+    "min": 0.0,
+    "max": 100.0
+  },
+  "tau2_stats": {
+    "mean": 0.36688087999999996,
+    "median": 0.17495,
+    "std": 0.5075225233236075,
+    "min": 0.0032,
+    "max": 6.2805
+  },
+  "k_stats": {
+    "mean": 14.2826,
+    "median": 12.0,
+    "min": 5,
+    "max": 82
+  },
+  "outcome_types": {
+    "RR": 860,
+    "SMD": 854,
+    "MD": 852,
+    "OR": 831,
+    "HR": 817,
+    "COR": 786
+  },
+  "domains": {
+    "psychiatry": 390,
+    "rheumatology": 381,
+    "endocrinology": 379,
+    "cardiology": 369,
+    "neurology": 363,
+    "dermatology": 360,
+    "infectious_disease": 354,
+    "nephrology": 353,
+    "oncology": 351,
+    "ophthalmology": 349,
+    "pulmonology": 343,
+    "gastroenterology": 343,
+    "immunology": 336,
+    "urology": 329
+  },
+  "I2_categories": {
+    "moderate": 1487,
+    "substantial": 1270,
+    "low": 1232,
+    "high": 1010
+  }
+}

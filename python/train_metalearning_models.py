@@ -547,7 +547,7 @@ class MetaLearningPipeline:
 
 def main():
     """Main execution."""
-    data_path = "data/metalearning/training/metalearning_training_data.csv"
+    data_path = "data/metalearning/training/metalearning_training_data_FINAL.csv"
 
     pipeline = MetaLearningPipeline(data_path)
     results = pipeline.run_complete_pipeline()

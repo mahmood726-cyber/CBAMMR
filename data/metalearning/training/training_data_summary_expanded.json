@@ -1,0 +1,56 @@
+{
+  "total_samples": 5000,
+  "real_published": 32,
+  "generated": 4968,
+  "sources": {
+    "cochrane": 16,
+    "bmj": 5,
+    "nejm": 3,
+    "jama": 3,
+    "lancet": 3,
+    "nature": 2,
+    "generated": 4968
+  },
+  "I2_stats": {
+    "mean": 44.681132,
+    "median": 43.72,
+    "std": 28.253961060030015,
+    "min": 0.02,
+    "max": 95.45
+  },
+  "tau2_stats": {
+    "mean": 0.37257064,
+    "median": 0.17709999999999998,
+    "std": 0.5154821756304178
+  },
+  "outcome_types": {
+    "RR": 850,
+    "MD": 836,
+    "SMD": 835,
+    "HR": 832,
+    "OR": 824,
+    "COR": 823
+  },
+  "domains": {
+    "endocrinology": 379,
+    "rheumatology": 378,
+    "psychiatry": 377,
+    "pain_medicine": 370,
+    "education": 367,
+    "genetics": 365,
+    "surgery": 362,
+    "psychology": 357,
+    "neurology": 352,
+    "infectious_disease": 344,
+    "immunology": 342,
+    "gastroenterology": 340,
+    "cardiology": 338,
+    "oncology": 329
+  },
+  "I2_categories": {
+    "moderate": 1483,
+    "low": 1251,
+    "substantial": 1240,
+    "high": 1026
+  }
+}
