@@ -52,7 +52,15 @@ Suggests:
     RoBMA (>= 2.0.0),
     testthat (>= 3.0.0),
     knitr (>= 1.30),
-    rmarkdown (>= 2.10)
+    rmarkdown (>= 2.10),
+    shiny (>= 1.7.0),
+    bs4Dash (>= 2.0.0),
+    shinyWidgets (>= 0.7.0),
+    colourpicker (>= 1.1.0),
+    DT (>= 0.20),
+    writexl (>= 1.4.0),
+    shinyjs (>= 2.1.0),
+    readxl (>= 1.4.0)
 RoxygenNote: 7.2.0
 VignetteBuilder: knitr
 URL: https://github.com/mahmood726-cyber/CBAMMR

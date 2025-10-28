@@ -227,23 +227,148 @@ ui <- dashboardPage(
       # PLOTS
       tabItem("plots",
         fluidRow(
-          box(width = 6, title = "Forest Plot", status = "primary", solidHeader = TRUE,
-              plotOutput("forest_plot", height = "500px"),
+          # FOREST PLOT
+          box(width = 8, title = "Forest Plot", status = "primary", solidHeader = TRUE, collapsible = TRUE,
+              plotOutput("forest_plot", height = "600px"),
               conditionalPanel(
                 condition = "output.has_results",
                 hr(),
-                downloadButton("dl_forest", "Download Forest Plot (PNG)",
-                              class = "btn-info")
+                fluidRow(
+                  column(6, downloadButton("dl_forest_png", "Download PNG (300 DPI)", class = "btn-info btn-block")),
+                  column(6, downloadButton("dl_forest_pdf", "Download PDF", class = "btn-primary btn-block"))
+                )
               )
           ),
-          box(width = 6, title = "Funnel Plot", status = "warning", solidHeader = TRUE,
-              plotOutput("funnel_plot", height = "500px"),
+
+          # FOREST PLOT CUSTOMIZATION
+          box(width = 4, title = "Forest Plot Settings", status = "info", solidHeader = TRUE,
+              collapsible = TRUE, collapsed = TRUE,
+
+              h5("Style Preset:"),
+              selectInput("forest_style", NULL,
+                         choices = c("Classic" = "classic",
+                                   "Meta R Package" = "meta",
+                                   "RevMan Style" = "revman",
+                                   "NEJM Style" = "nejm"),
+                         selected = "classic"),
+
+              hr(),
+              h5("Range & Scale:"),
+              fluidRow(
+                column(6, numericInput("forest_xlim_min", "X-min:", value = NA)),
+                column(6, numericInput("forest_xlim_max", "X-max:", value = NA))
+              ),
+              numericInput("forest_steps", "Tick Marks:", value = 5, min = 3, max = 10),
+              numericInput("forest_digits", "Decimals:", value = 2, min = 0, max = 4),
+
+              hr(),
+              h5("Colors:"),
+              fluidRow(
+                column(6, colourInput("forest_col", "Effect Color:", value = "black")),
+                column(6, colourInput("forest_border", "Border:", value = "black"))
+              ),
+              fluidRow(
+                column(6, colourInput("forest_col_diamond", "Diamond:", value = "#003366")),
+                column(6, colourInput("forest_col_pred", "Pred. Interval:", value = "darkgreen"))
+              ),
+              fluidRow(
+                column(6, colourInput("forest_col_lines", "Grid Lines:", value = "gray")),
+                column(6, colourInput("forest_col_text", "Text:", value = "black"))
+              ),
+              colourInput("forest_col_bg", "Background:", value = "white"),
+
+              hr(),
+              h5("Appearance:"),
+              sliderInput("forest_cex", "Text Size:", min = 0.5, max = 2, value = 1.0, step = 0.1),
+              sliderInput("forest_lwd", "Line Width:", min = 0.5, max = 5, value = 1.5, step = 0.5),
+              selectInput("forest_pch", "Point Style:",
+                         choices = list("Square" = 15, "Circle" = 16, "Diamond" = 18,
+                                      "Triangle" = 17, "Plus" = 3),
+                         selected = 15),
+
+              hr(),
+              h5("Options:"),
+              awesomeCheckbox("forest_showweights", "Show Weights", value = TRUE, status = "success"),
+              awesomeCheckbox("forest_show_pred", "Show Prediction Interval", value = FALSE, status = "info"),
+              awesomeCheckbox("forest_annotate", "Show Annotations", value = TRUE, status = "success"),
+
+              hr(),
+              h5("Labels:"),
+              textInput("forest_xlab", "X-axis Label:", value = ""),
+              textInput("forest_mlab", "Pooled Label:", value = "Pooled Effect (Random-Effects Model)"),
+
+              hr(),
+              actionButton("forest_reset", "Reset to Defaults", class = "btn-warning btn-block")
+          )
+        ),
+
+        fluidRow(
+          # FUNNEL PLOT
+          box(width = 8, title = "Funnel Plot", status = "warning", solidHeader = TRUE, collapsible = TRUE,
+              plotOutput("funnel_plot", height = "600px"),
               conditionalPanel(
                 condition = "output.has_results",
                 hr(),
-                downloadButton("dl_funnel", "Download Funnel Plot (PNG)",
-                              class = "btn-warning")
+                fluidRow(
+                  column(6, downloadButton("dl_funnel_png", "Download PNG (300 DPI)", class = "btn-warning btn-block")),
+                  column(6, downloadButton("dl_funnel_pdf", "Download PDF", class = "btn-primary btn-block"))
+                )
               )
+          ),
+
+          # FUNNEL PLOT CUSTOMIZATION
+          box(width = 4, title = "Funnel Plot Settings", status = "success", solidHeader = TRUE,
+              collapsible = TRUE, collapsed = TRUE,
+
+              h5("Range & Scale:"),
+              fluidRow(
+                column(6, numericInput("funnel_xlim_min", "X-min:", value = NA)),
+                column(6, numericInput("funnel_xlim_max", "X-max:", value = NA))
+              ),
+              fluidRow(
+                column(6, numericInput("funnel_ylim_min", "Y-min:", value = NA)),
+                column(6, numericInput("funnel_ylim_max", "Y-max:", value = NA))
+              ),
+              numericInput("funnel_steps", "Tick Marks:", value = 5, min = 3, max = 10),
+              numericInput("funnel_digits", "Decimals:", value = 2, min = 0, max = 4),
+
+              hr(),
+              h5("Colors:"),
+              fluidRow(
+                column(6, colourInput("funnel_col", "Point Color:", value = "black")),
+                column(6, colourInput("funnel_bg", "Point Fill:", value = "gray"))
+              ),
+              fluidRow(
+                column(6, colourInput("funnel_col_contour", "Contours:", value = "blue")),
+                column(6, colourInput("funnel_col_ref", "Ref. Line:", value = "black"))
+              ),
+              fluidRow(
+                column(6, colourInput("funnel_col_text", "Text:", value = "black")),
+                column(6, colourInput("funnel_col_bg", "Background:", value = "white"))
+              ),
+
+              hr(),
+              h5("Appearance:"),
+              sliderInput("funnel_cex", "Point Size:", min = 0.5, max = 3, value = 1.0, step = 0.1),
+              sliderInput("funnel_lwd", "Line Width:", min = 0.5, max = 5, value = 1.0, step = 0.5),
+              selectInput("funnel_pch", "Point Style:",
+                         choices = list("Filled Circle" = 21, "Circle" = 1, "Square" = 0,
+                                      "Diamond" = 5, "Triangle" = 2),
+                         selected = 21),
+
+              hr(),
+              h5("Options:"),
+              awesomeCheckbox("funnel_shade", "Shade Contours", value = TRUE, status = "success"),
+              sliderInput("funnel_level", "Confidence Level:", min = 80, max = 99, value = 95, step = 1),
+
+              hr(),
+              h5("Labels:"),
+              textInput("funnel_xlab", "X-axis Label:", value = ""),
+              textInput("funnel_ylab", "Y-axis Label:", value = "Standard Error"),
+              textInput("funnel_main", "Title:", value = "Funnel Plot"),
+
+              hr(),
+              actionButton("funnel_reset", "Reset to Defaults", class = "btn-warning btn-block")
           )
         )
       ),
@@ -544,18 +669,139 @@ server <- function(input, output, session) {
     rv$formatted$results_text
   })
 
-  # PLOTS (basic implementation)
+  # FOREST PLOT RESET
+  observeEvent(input$forest_reset, {
+    updateSelectInput(session, "forest_style", selected = "classic")
+    updateNumericInput(session, "forest_xlim_min", value = NA)
+    updateNumericInput(session, "forest_xlim_max", value = NA)
+    updateNumericInput(session, "forest_steps", value = 5)
+    updateNumericInput(session, "forest_digits", value = 2)
+    updateColourInput(session, "forest_col", value = "black")
+    updateColourInput(session, "forest_border", value = "black")
+    updateColourInput(session, "forest_col_diamond", value = "#003366")
+    updateColourInput(session, "forest_col_pred", value = "darkgreen")
+    updateColourInput(session, "forest_col_lines", value = "gray")
+    updateColourInput(session, "forest_col_text", value = "black")
+    updateColourInput(session, "forest_col_bg", value = "white")
+    updateSliderInput(session, "forest_cex", value = 1.0)
+    updateSliderInput(session, "forest_lwd", value = 1.5)
+    updateSelectInput(session, "forest_pch", selected = 15)
+    updateCheckboxInput(session, "forest_showweights", value = TRUE)
+    updateCheckboxInput(session, "forest_show_pred", value = FALSE)
+    updateCheckboxInput(session, "forest_annotate", value = TRUE)
+    updateTextInput(session, "forest_xlab", value = "")
+    updateTextInput(session, "forest_mlab", value = "Pooled Effect (Random-Effects Model)")
+    showNotification("Forest plot settings reset to defaults", type = "info")
+  })
+
+  # FUNNEL PLOT RESET
+  observeEvent(input$funnel_reset, {
+    updateNumericInput(session, "funnel_xlim_min", value = NA)
+    updateNumericInput(session, "funnel_xlim_max", value = NA)
+    updateNumericInput(session, "funnel_ylim_min", value = NA)
+    updateNumericInput(session, "funnel_ylim_max", value = NA)
+    updateNumericInput(session, "funnel_steps", value = 5)
+    updateNumericInput(session, "funnel_digits", value = 2)
+    updateColourInput(session, "funnel_col", value = "black")
+    updateColourInput(session, "funnel_bg", value = "gray")
+    updateColourInput(session, "funnel_col_contour", value = "blue")
+    updateColourInput(session, "funnel_col_ref", value = "black")
+    updateColourInput(session, "funnel_col_text", value = "black")
+    updateColourInput(session, "funnel_col_bg", value = "white")
+    updateSliderInput(session, "funnel_cex", value = 1.0)
+    updateSliderInput(session, "funnel_lwd", value = 1.0)
+    updateSelectInput(session, "funnel_pch", selected = 21)
+    updateCheckboxInput(session, "funnel_shade", value = TRUE)
+    updateSliderInput(session, "funnel_level", value = 95)
+    updateTextInput(session, "funnel_xlab", value = "")
+    updateTextInput(session, "funnel_ylab", value = "Standard Error")
+    updateTextInput(session, "funnel_main", value = "Funnel Plot")
+    showNotification("Funnel plot settings reset to defaults", type = "info")
+  })
+
+  # PLOTS - Enhanced with full customization
   output$forest_plot <- renderPlot({
     req(rv$results)
-    # Simple forest plot using metafor
     fit <- rv$results$pooled$transport
-    forest(fit, main = "Forest Plot")
+
+    # Prepare xlim
+    xlim <- NULL
+    if (!is.na(input$forest_xlim_min) && !is.na(input$forest_xlim_max)) {
+      xlim <- c(input$forest_xlim_min, input$forest_xlim_max)
+    }
+
+    # Prepare xlab
+    xlab <- if (input$forest_xlab == "") NULL else input$forest_xlab
+    mlab <- if (input$forest_mlab == "") NULL else input$forest_mlab
+
+    # Call custom forest plot with all parameters
+    custom_forest_plot(
+      fit = fit,
+      style = input$forest_style,
+      xlim = xlim,
+      steps = input$forest_steps,
+      digits = input$forest_digits,
+      showweights = input$forest_showweights,
+      show_pred = input$forest_show_pred,
+      col = input$forest_col,
+      border = input$forest_border,
+      col_diamond = input$forest_col_diamond,
+      col_pred = input$forest_col_pred,
+      col_lines = input$forest_col_lines,
+      col_text = input$forest_col_text,
+      col_background = input$forest_col_bg,
+      cex = input$forest_cex,
+      lwd = input$forest_lwd,
+      pch = as.numeric(input$forest_pch),
+      xlab = xlab,
+      mlab = mlab,
+      annotate = input$forest_annotate
+    )
   })
 
   output$funnel_plot <- renderPlot({
     req(rv$results)
     fit <- rv$results$pooled$transport
-    funnel(fit, main = "Funnel Plot")
+
+    # Prepare xlim
+    xlim <- NULL
+    if (!is.na(input$funnel_xlim_min) && !is.na(input$funnel_xlim_max)) {
+      xlim <- c(input$funnel_xlim_min, input$funnel_xlim_max)
+    }
+
+    # Prepare ylim
+    ylim <- NULL
+    if (!is.na(input$funnel_ylim_min) && !is.na(input$funnel_ylim_max)) {
+      ylim <- c(input$funnel_ylim_min, input$funnel_ylim_max)
+    }
+
+    # Prepare labels
+    xlab <- if (input$funnel_xlab == "") NULL else input$funnel_xlab
+    ylab <- if (input$funnel_ylab == "") "Standard Error" else input$funnel_ylab
+    main <- if (input$funnel_main == "") "Funnel Plot" else input$funnel_main
+
+    # Call custom funnel plot with all parameters
+    custom_funnel_plot(
+      fit = fit,
+      xlim = xlim,
+      ylim = ylim,
+      steps = input$funnel_steps,
+      digits = input$funnel_digits,
+      col = input$funnel_col,
+      bg = input$funnel_bg,
+      pch = as.numeric(input$funnel_pch),
+      cex = input$funnel_cex,
+      lwd = input$funnel_lwd,
+      col_contour = input$funnel_col_contour,
+      col_ref = input$funnel_col_ref,
+      col_background = input$funnel_col_bg,
+      col_text = input$funnel_col_text,
+      shade_contours = input$funnel_shade,
+      level = input$funnel_level,
+      xlab = xlab,
+      ylab = ylab,
+      main = main
+    )
   })
 
   # GRADE
@@ -634,22 +880,178 @@ server <- function(input, output, session) {
     }
   )
 
-  output$dl_forest <- downloadHandler(
+  output$dl_forest_png <- downloadHandler(
     filename = "forest_plot.png",
     content = function(file) {
       req(rv$results)
-      png(file, width = 3000, height = 2400, res = 300)
-      forest(rv$results$pooled$transport, main = "Forest Plot")
+      fit <- rv$results$pooled$transport
+
+      # Prepare parameters
+      xlim <- NULL
+      if (!is.na(input$forest_xlim_min) && !is.na(input$forest_xlim_max)) {
+        xlim <- c(input$forest_xlim_min, input$forest_xlim_max)
+      }
+      xlab <- if (input$forest_xlab == "") NULL else input$forest_xlab
+      mlab <- if (input$forest_mlab == "") NULL else input$forest_mlab
+
+      # High resolution PNG
+      png(file, width = 3600, height = 3000, res = 300)
+      custom_forest_plot(
+        fit = fit,
+        style = input$forest_style,
+        xlim = xlim,
+        steps = input$forest_steps,
+        digits = input$forest_digits,
+        showweights = input$forest_showweights,
+        show_pred = input$forest_show_pred,
+        col = input$forest_col,
+        border = input$forest_border,
+        col_diamond = input$forest_col_diamond,
+        col_pred = input$forest_col_pred,
+        col_lines = input$forest_col_lines,
+        col_text = input$forest_col_text,
+        col_background = input$forest_col_bg,
+        cex = input$forest_cex,
+        lwd = input$forest_lwd,
+        pch = as.numeric(input$forest_pch),
+        xlab = xlab,
+        mlab = mlab,
+        annotate = input$forest_annotate
+      )
       dev.off()
     }
   )
 
-  output$dl_funnel <- downloadHandler(
+  output$dl_forest_pdf <- downloadHandler(
+    filename = "forest_plot.pdf",
+    content = function(file) {
+      req(rv$results)
+      fit <- rv$results$pooled$transport
+
+      # Prepare parameters
+      xlim <- NULL
+      if (!is.na(input$forest_xlim_min) && !is.na(input$forest_xlim_max)) {
+        xlim <- c(input$forest_xlim_min, input$forest_xlim_max)
+      }
+      xlab <- if (input$forest_xlab == "") NULL else input$forest_xlab
+      mlab <- if (input$forest_mlab == "") NULL else input$forest_mlab
+
+      # PDF output
+      pdf(file, width = 12, height = 10)
+      custom_forest_plot(
+        fit = fit,
+        style = input$forest_style,
+        xlim = xlim,
+        steps = input$forest_steps,
+        digits = input$forest_digits,
+        showweights = input$forest_showweights,
+        show_pred = input$forest_show_pred,
+        col = input$forest_col,
+        border = input$forest_border,
+        col_diamond = input$forest_col_diamond,
+        col_pred = input$forest_col_pred,
+        col_lines = input$forest_col_lines,
+        col_text = input$forest_col_text,
+        col_background = input$forest_col_bg,
+        cex = input$forest_cex,
+        lwd = input$forest_lwd,
+        pch = as.numeric(input$forest_pch),
+        xlab = xlab,
+        mlab = mlab,
+        annotate = input$forest_annotate
+      )
+      dev.off()
+    }
+  )
+
+  output$dl_funnel_png <- downloadHandler(
     filename = "funnel_plot.png",
     content = function(file) {
       req(rv$results)
-      png(file, width = 2400, height = 2400, res = 300)
-      funnel(rv$results$pooled$transport, main = "Funnel Plot")
+      fit <- rv$results$pooled$transport
+
+      # Prepare parameters
+      xlim <- NULL
+      if (!is.na(input$funnel_xlim_min) && !is.na(input$funnel_xlim_max)) {
+        xlim <- c(input$funnel_xlim_min, input$funnel_xlim_max)
+      }
+      ylim <- NULL
+      if (!is.na(input$funnel_ylim_min) && !is.na(input$funnel_ylim_max)) {
+        ylim <- c(input$funnel_ylim_min, input$funnel_ylim_max)
+      }
+      xlab <- if (input$funnel_xlab == "") NULL else input$funnel_xlab
+      ylab <- if (input$funnel_ylab == "") "Standard Error" else input$funnel_ylab
+      main <- if (input$funnel_main == "") "Funnel Plot" else input$funnel_main
+
+      # High resolution PNG
+      png(file, width = 3000, height = 3000, res = 300)
+      custom_funnel_plot(
+        fit = fit,
+        xlim = xlim,
+        ylim = ylim,
+        steps = input$funnel_steps,
+        digits = input$funnel_digits,
+        col = input$funnel_col,
+        bg = input$funnel_bg,
+        pch = as.numeric(input$funnel_pch),
+        cex = input$funnel_cex,
+        lwd = input$funnel_lwd,
+        col_contour = input$funnel_col_contour,
+        col_ref = input$funnel_col_ref,
+        col_background = input$funnel_col_bg,
+        col_text = input$funnel_col_text,
+        shade_contours = input$funnel_shade,
+        level = input$funnel_level,
+        xlab = xlab,
+        ylab = ylab,
+        main = main
+      )
+      dev.off()
+    }
+  )
+
+  output$dl_funnel_pdf <- downloadHandler(
+    filename = "funnel_plot.pdf",
+    content = function(file) {
+      req(rv$results)
+      fit <- rv$results$pooled$transport
+
+      # Prepare parameters
+      xlim <- NULL
+      if (!is.na(input$funnel_xlim_min) && !is.na(input$funnel_xlim_max)) {
+        xlim <- c(input$funnel_xlim_min, input$funnel_xlim_max)
+      }
+      ylim <- NULL
+      if (!is.na(input$funnel_ylim_min) && !is.na(input$funnel_ylim_max)) {
+        ylim <- c(input$funnel_ylim_min, input$funnel_ylim_max)
+      }
+      xlab <- if (input$funnel_xlab == "") NULL else input$funnel_xlab
+      ylab <- if (input$funnel_ylab == "") "Standard Error" else input$funnel_ylab
+      main <- if (input$funnel_main == "") "Funnel Plot" else input$funnel_main
+
+      # PDF output
+      pdf(file, width = 10, height = 10)
+      custom_funnel_plot(
+        fit = fit,
+        xlim = xlim,
+        ylim = ylim,
+        steps = input$funnel_steps,
+        digits = input$funnel_digits,
+        col = input$funnel_col,
+        bg = input$funnel_bg,
+        pch = as.numeric(input$funnel_pch),
+        cex = input$funnel_cex,
+        lwd = input$funnel_lwd,
+        col_contour = input$funnel_col_contour,
+        col_ref = input$funnel_col_ref,
+        col_background = input$funnel_col_bg,
+        col_text = input$funnel_col_text,
+        shade_contours = input$funnel_shade,
+        level = input$funnel_level,
+        xlab = xlab,
+        ylab = ylab,
+        main = main
+      )
       dev.off()
     }
   )
