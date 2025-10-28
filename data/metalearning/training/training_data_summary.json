@@ -1,0 +1,43 @@
+{
+  "total_samples": 508,
+  "real_published": 8,
+  "generated": 500,
+  "I2_stats": {
+    "mean": 45.03061023622047,
+    "median": 43.91,
+    "std": 27.846886500873985,
+    "min": 0.71,
+    "max": 93.49
+  },
+  "tau2_stats": {
+    "mean": 0.3640860236220473,
+    "median": 0.18664999999999998,
+    "std": 0.5089272323931356
+  },
+  "outcome_types": {
+    "HR": 93,
+    "MD": 92,
+    "RR": 88,
+    "OR": 85,
+    "SMD": 79,
+    "COR": 71
+  },
+  "domains": {
+    "cardiology": 65,
+    "infectious_disease": 59,
+    "psychiatry": 54,
+    "oncology": 53,
+    "rheumatology": 50,
+    "education": 50,
+    "gastroenterology": 48,
+    "endocrinology": 45,
+    "neurology": 44,
+    "psychology": 40
+  },
+  "I2_categories": {
+    "moderate": 160,
+    "low": 123,
+    "substantial": 123,
+    "high": 102
+  }
+}

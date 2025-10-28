@@ -1,0 +1,27 @@
+{
+  "features": [
+    "n_studies",
+    "year_median",
+    "year_range",
+    "pooled_effect",
+    "ci_width",
+    "total_n",
+    "k_times_year_range",
+    "k_squared",
+    "log_k",
+    "log_total_n",
+    "log_ci_width",
+    "avg_n_per_study",
+    "log_avg_n",
+    "studies_per_year",
+    "abs_pooled_effect",
+    "years_since_median",
+    "Q_per_study",
+    "outcome_measure_encoded",
+    "domain_encoded",
+    "small_ma",
+    "large_ma",
+    "large_effect"
+  ],
+  "n_features": 22
+}
