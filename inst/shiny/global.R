@@ -3,7 +3,36 @@
 # Required packages
 required_packages <- c(
   "shiny", "bs4Dash", "CBAMMR", "DT", "plotly", "ggplot2",
-  "shinyWidgets", "readr", "writexl", "shinyjs", "colourpicker"
+  "shinyWidgets", "readr", "writexl", "shinyjs"
+)
+
+# Color palette for dropdown menus
+color_choices <- c(
+  "Black" = "black",
+  "White" = "white",
+  "Navy Blue" = "#003366",
+  "Dark Blue" = "#0066CC",
+  "Light Blue" = "#6699CC",
+  "Sky Blue" = "#87CEEB",
+  "Dark Red" = "#990000",
+  "Red" = "#CC0000",
+  "Light Red" = "#FF6666",
+  "Dark Green" = "#006600",
+  "Green" = "#009900",
+  "Light Green" = "#66CC66",
+  "Dark Gray" = "#333333",
+  "Gray" = "#808080",
+  "Light Gray" = "#CCCCCC",
+  "Very Light Gray" = "#F5F5F5",
+  "Purple" = "#663399",
+  "Magenta" = "#A23B72",
+  "Orange" = "#FF9900",
+  "Dark Orange" = "#CC6600",
+  "Teal" = "#2E86AB",
+  "Cyan" = "#00CCCC",
+  "Brown" = "#663300",
+  "Gold" = "#FFD700",
+  "Transparent" = "transparent"
 )
 
 # Check and load packages

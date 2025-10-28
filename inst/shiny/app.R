@@ -264,18 +264,18 @@ ui <- dashboardPage(
               hr(),
               h5("Colors:"),
               fluidRow(
-                column(6, colourInput("forest_col", "Effect Color:", value = "black")),
-                column(6, colourInput("forest_border", "Border:", value = "black"))
+                column(6, selectInput("forest_col", "Effect Color:", choices = color_choices, selected = "black")),
+                column(6, selectInput("forest_border", "Border:", choices = color_choices, selected = "black"))
               ),
               fluidRow(
-                column(6, colourInput("forest_col_diamond", "Diamond:", value = "#003366")),
-                column(6, colourInput("forest_col_pred", "Pred. Interval:", value = "darkgreen"))
+                column(6, selectInput("forest_col_diamond", "Diamond:", choices = color_choices, selected = "#003366")),
+                column(6, selectInput("forest_col_pred", "Pred. Interval:", choices = color_choices, selected = "#006600"))
               ),
               fluidRow(
-                column(6, colourInput("forest_col_lines", "Grid Lines:", value = "gray")),
-                column(6, colourInput("forest_col_text", "Text:", value = "black"))
+                column(6, selectInput("forest_col_lines", "Grid Lines:", choices = color_choices, selected = "#808080")),
+                column(6, selectInput("forest_col_text", "Text:", choices = color_choices, selected = "black"))
               ),
-              colourInput("forest_col_bg", "Background:", value = "white"),
+              selectInput("forest_col_bg", "Background:", choices = color_choices, selected = "white"),
 
               hr(),
               h5("Appearance:"),
@@ -335,16 +335,16 @@ ui <- dashboardPage(
               hr(),
               h5("Colors:"),
               fluidRow(
-                column(6, colourInput("funnel_col", "Point Color:", value = "black")),
-                column(6, colourInput("funnel_bg", "Point Fill:", value = "gray"))
+                column(6, selectInput("funnel_col", "Point Color:", choices = color_choices, selected = "black")),
+                column(6, selectInput("funnel_bg", "Point Fill:", choices = color_choices, selected = "#808080"))
               ),
               fluidRow(
-                column(6, colourInput("funnel_col_contour", "Contours:", value = "blue")),
-                column(6, colourInput("funnel_col_ref", "Ref. Line:", value = "black"))
+                column(6, selectInput("funnel_col_contour", "Contours:", choices = color_choices, selected = "#0066CC")),
+                column(6, selectInput("funnel_col_ref", "Ref. Line:", choices = color_choices, selected = "black"))
               ),
               fluidRow(
-                column(6, colourInput("funnel_col_text", "Text:", value = "black")),
-                column(6, colourInput("funnel_col_bg", "Background:", value = "white"))
+                column(6, selectInput("funnel_col_text", "Text:", choices = color_choices, selected = "black")),
+                column(6, selectInput("funnel_col_bg", "Background:", choices = color_choices, selected = "white"))
               ),
 
               hr(),
@@ -676,13 +676,13 @@ server <- function(input, output, session) {
     updateNumericInput(session, "forest_xlim_max", value = NA)
     updateNumericInput(session, "forest_steps", value = 5)
     updateNumericInput(session, "forest_digits", value = 2)
-    updateColourInput(session, "forest_col", value = "black")
-    updateColourInput(session, "forest_border", value = "black")
-    updateColourInput(session, "forest_col_diamond", value = "#003366")
-    updateColourInput(session, "forest_col_pred", value = "darkgreen")
-    updateColourInput(session, "forest_col_lines", value = "gray")
-    updateColourInput(session, "forest_col_text", value = "black")
-    updateColourInput(session, "forest_col_bg", value = "white")
+    updateSelectInput(session, "forest_col", selected = "black")
+    updateSelectInput(session, "forest_border", selected = "black")
+    updateSelectInput(session, "forest_col_diamond", selected = "#003366")
+    updateSelectInput(session, "forest_col_pred", selected = "#006600")
+    updateSelectInput(session, "forest_col_lines", selected = "#808080")
+    updateSelectInput(session, "forest_col_text", selected = "black")
+    updateSelectInput(session, "forest_col_bg", selected = "white")
     updateSliderInput(session, "forest_cex", value = 1.0)
     updateSliderInput(session, "forest_lwd", value = 1.5)
     updateSelectInput(session, "forest_pch", selected = 15)
@@ -702,12 +702,12 @@ server <- function(input, output, session) {
     updateNumericInput(session, "funnel_ylim_max", value = NA)
     updateNumericInput(session, "funnel_steps", value = 5)
     updateNumericInput(session, "funnel_digits", value = 2)
-    updateColourInput(session, "funnel_col", value = "black")
-    updateColourInput(session, "funnel_bg", value = "gray")
-    updateColourInput(session, "funnel_col_contour", value = "blue")
-    updateColourInput(session, "funnel_col_ref", value = "black")
-    updateColourInput(session, "funnel_col_text", value = "black")
-    updateColourInput(session, "funnel_col_bg", value = "white")
+    updateSelectInput(session, "funnel_col", selected = "black")
+    updateSelectInput(session, "funnel_bg", selected = "#808080")
+    updateSelectInput(session, "funnel_col_contour", selected = "#0066CC")
+    updateSelectInput(session, "funnel_col_ref", selected = "black")
+    updateSelectInput(session, "funnel_col_text", selected = "black")
+    updateSelectInput(session, "funnel_col_bg", selected = "white")
     updateSliderInput(session, "funnel_cex", value = 1.0)
     updateSliderInput(session, "funnel_lwd", value = 1.0)
     updateSelectInput(session, "funnel_pch", selected = 21)
