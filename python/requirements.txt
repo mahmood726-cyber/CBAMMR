@@ -1,0 +1,33 @@
+# CBAMMR Meta-Learning Data Collection Requirements
+# Install with: pip install -r requirements.txt
+
+# Core data processing
+pandas>=1.3.0
+numpy>=1.20.0
+
+# R interface (for metadat package)
+rpy2>=3.4.0
+
+# HTTP requests (for GitHub and Zenodo)
+requests>=2.25.0
+
+# Machine Learning (for training models)
+scikit-learn>=0.24.0
+xgboost>=1.4.0
+
+# Data visualization
+matplotlib>=3.3.0
+seaborn>=0.11.0
+
+# Progress bars
+tqdm>=4.60.0
+
+# JSON handling
+jsonschema>=3.2.0
+
+# File handling
+openpyxl>=3.0.0  # For Excel files
+
+# Optional: API clients
+zenodo-client>=0.2.0  # Official Zenodo client (optional)
+PyGithub>=1.55  # GitHub API (optional)

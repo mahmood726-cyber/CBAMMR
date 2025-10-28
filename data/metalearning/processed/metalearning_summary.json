@@ -1,0 +1,26 @@
+{
+  "total_datasets": 27,
+  "by_source": {
+    "synergy": 27
+  },
+  "by_domain": {
+    "Dementia": 2,
+    "Software Fault Prediction": 2,
+    "Wilson disease": 1,
+    "Animal Model of Depression": 1,
+    "ACEInhibitors": 1,
+    "ADHD": 1,
+    "Antihistamines": 1,
+    "Atypical Antipsychotics": 1,
+    "Beta Blockers": 1,
+    "Calcium Channel Blockers": 1
+  },
+  "with_effect_sizes": 0,
+  "with_heterogeneity_stats": 0,
+  "year_range": [
+    2006,
+    2020
+  ],
+  "avg_included_studies": 66.0,
+  "median_included_studies": 45
+}

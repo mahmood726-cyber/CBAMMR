@@ -1,0 +1,87 @@
+GitHub Meta-Analysis Repositories Collection
+======================================================================
+
+Total repositories: 90
+
+Top repositories by stars:
+----------------------------------------------------------------------
+
+1. IndrajeetPatil/statsExpressions (315 ⭐)
+   Tidy data frames and expressions with statistical summaries 📜
+   https://github.com/IndrajeetPatil/statsExpressions
+
+2. ropensci/biomartr (224 ⭐)
+   Genomic Data Retrieval with R
+   https://github.com/ropensci/biomartr
+
+3. canlab/CanlabCore (163 ⭐)
+   Core tools required for running Canlab Matlab toolboxes. The heart of this toolbox is object-oriente
+   https://github.com/canlab/CanlabCore
+
+4. zhanxw/rvtests (140 ⭐)
+   Rare variant test software for next generation sequencing data
+   https://github.com/zhanxw/rvtests
+
+5. canlab/Neuroimaging_Pattern_Masks (127 ⭐)
+   Brain signature patterns, atlases of regions, and meta-analysis masks for neuroimaging data analysis
+   https://github.com/canlab/Neuroimaging_Pattern_Masks
+
+6. e-bug/volta (114 ⭐)
+   [TACL 2021] Code and data for the framework in "Multimodal Pretraining Unmasked: A Meta-Analysis and
+   https://github.com/e-bug/volta
+
+7. HALFpipe/HALFpipe (105 ⭐)
+   ENIGMA HALFpipe is a user-friendly software that facilitates reproducible analysis of fMRI data
+   https://github.com/HALFpipe/HALFpipe
+
+8. asreview/synergy-dataset (87 ⭐)
+   SYNERGY - Open machine learning dataset on study selection in systematic reviews
+   https://github.com/asreview/synergy-dataset
+
+9. krassowski/easy-entrez (79 ⭐)
+   Retrieve PubMed articles, text-mining annotations, or molecular data from >35 Entrez databases via e
+   https://github.com/krassowski/easy-entrez
+
+10. dmphillippo/multinma (40 ⭐)
+   Network meta-analysis of individual and aggregate data in Stan
+   https://github.com/dmphillippo/multinma
+
+11. nhanhocu/metamicrobiomeR (34 ⭐)
+   An R package for analysis of microbiome relative abundance data using zero inflated beta GAMLSS and 
+   https://github.com/nhanhocu/metamicrobiomeR
+
+12. wanjinhu/Metagenomic-Analysis-Pipeline (33 ⭐)
+   Metagenomic sequence data analysis pipeline
+   https://github.com/wanjinhu/Metagenomic-Analysis-Pipeline
+
+13. zhanxw/seqminer (32 ⭐)
+   Query sequence data (VCF/BCF1/BCF2, Tabix, BGEN, PLINK) in R
+   https://github.com/zhanxw/seqminer
+
+14. ESHackathon/eviatlas (30 ⭐)
+   A tool for visualising geographical data in systematic maps
+   https://github.com/ESHackathon/eviatlas
+
+15. data-hunters/metadata-digger (30 ⭐)
+   Big Data tool for metadata extraction (Exif), enrichment (using DeepLearning) and analysis
+   https://github.com/data-hunters/metadata-digger
+
+16. nealhaddaway/bibfix (27 ⭐)
+   Repair bibliographic data
+   https://github.com/nealhaddaway/bibfix
+
+17. TwoRavens/TwoRavens (25 ⭐)
+   A web application for data exploration, machine learning and statistical analysis, model constructio
+   https://github.com/TwoRavens/TwoRavens
+
+18. WojciechKusa/systematic-review-datasets (24 ⭐)
+   [NeurIPS 2023] CSMeD: Bridging the Dataset Gap in Automated Citation Screening for Systematic Litera
+   https://github.com/WojciechKusa/systematic-review-datasets
+
+19. lindgrengroup/fatdistnGWAS (22 ⭐)
+   Code and data related to the meta-analysis of fat distribution in UK Biobank and GIANT
+   https://github.com/lindgrengroup/fatdistnGWAS
+
+20. dvelikiy/metacritic-analysis (21 ⭐)
+   scraping and basic exploratory analysis of game data from metacritic.com
+   https://github.com/dvelikiy/metacritic-analysis
