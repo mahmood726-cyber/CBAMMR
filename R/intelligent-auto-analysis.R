@@ -368,6 +368,92 @@ cbamm_auto <- function(data,
 }
 
 
+#' Check for Rare Events in Binary Data
+#' @keywords internal
+.check_rare_events <- function(ai, bi, ci, di, verbose) {
+
+  # Calculate event rates
+  total_events_treat <- sum(ai, na.rm = TRUE)
+  total_n_treat <- sum(ai + bi, na.rm = TRUE)
+  total_events_control <- sum(ci, na.rm = TRUE)
+  total_n_control <- sum(ci + di, na.rm = TRUE)
+
+  rate_treat <- total_events_treat / total_n_treat
+  rate_control <- total_events_control / total_n_control
+  overall_rate <- (total_events_treat + total_events_control) / (total_n_treat + total_n_control)
+
+  # Check individual study event rates
+  study_rates_treat <- ai / (ai + bi)
+  study_rates_control <- ci / (ci + di)
+  min_rate <- min(c(study_rates_treat, study_rates_control), na.rm = TRUE)
+  max_rate <- max(c(study_rates_treat, study_rates_control), na.rm = TRUE)
+
+  # Decision logic based on Cochrane Handbook recommendations
+  use_peto <- FALSE
+  message <- ""
+
+  if (overall_rate < 0.01) {
+    # Very rare events (<1%) - Peto OR recommended
+    use_peto <- TRUE
+    message <- sprintf(
+      "overall event rate %.2f%% (<1%% threshold). Peto OR recommended for rare events.",
+      overall_rate * 100
+    )
+    if (verbose) {
+      cat("  ⚠ RARE EVENTS DETECTED: Overall event rate =", sprintf("%.2f%%", overall_rate * 100), "\n")
+      cat("  → Automatically switching to Peto Odds Ratio (reduces bias for rare events)\n")
+    }
+  } else if (overall_rate < 0.05) {
+    # Moderately rare (1-5%) - Warning but use standard OR
+    use_peto <- FALSE
+    message <- sprintf(
+      "overall event rate %.2f%% (moderately rare). Standard OR used but consider Peto OR.",
+      overall_rate * 100
+    )
+    if (verbose) {
+      cat("  ⚠ MODERATELY RARE EVENTS: Overall event rate =", sprintf("%.2f%%", overall_rate * 100), "\n")
+      cat("  → Using standard OR, but Peto OR may be more appropriate\n")
+      cat("  → Consider sensitivity analysis with Peto OR\n")
+    }
+    warning(paste0(
+      "Moderately rare events detected (", sprintf("%.2f%%", overall_rate * 100), "). ",
+      "Standard OR may be biased. Consider using Peto OR for sensitivity analysis."
+    ), call. = FALSE)
+  } else if (max_rate - min_rate > 0.7) {
+    # Large variation in event rates across studies
+    message <- sprintf(
+      "event rates vary from %.1f%% to %.1f%%. Standard OR appropriate.",
+      min_rate * 100, max_rate * 100
+    )
+    if (verbose) {
+      cat("  ℹ Event rates vary considerably across studies (", sprintf("%.1f%%", min_rate * 100),
+          " to ", sprintf("%.1f%%", max_rate * 100), ")\n")
+    }
+  } else {
+    # Common events - standard OR appropriate
+    message <- sprintf(
+      "overall event rate %.1f%%. Standard OR appropriate.",
+      overall_rate * 100
+    )
+  }
+
+  # Check for zero cells
+  n_zero_cells <- sum(ai == 0 | bi == 0 | ci == 0 | di == 0, na.rm = TRUE)
+  if (n_zero_cells > 0 && verbose) {
+    cat("  ℹ", n_zero_cells, "studies have zero cells (continuity correction will be applied)\n")
+  }
+
+  list(
+    use_peto = use_peto,
+    overall_rate = overall_rate,
+    rate_treat = rate_treat,
+    rate_control = rate_control,
+    n_zero_cells = n_zero_cells,
+    message = message
+  )
+}
+
+
 #' Automatically Calculate Effect Sizes
 #' @keywords internal
 .auto_calculate_es <- function(data, data_info, verbose) {
@@ -411,8 +497,17 @@ cbamm_auto <- function(data,
       bi <- data$bi
       ci <- data$ci
       di <- data$di
-      measure <- "OR"
-      result <- cbamm_calc_or(ai = ai, bi = bi, ci = ci, di = di)
+
+      # Check for rare events BEFORE choosing effect size
+      rare_event_check <- .check_rare_events(ai, bi, ci, di, verbose)
+
+      if (rare_event_check$use_peto) {
+        measure <- "PETO"
+        result <- cbamm_calc_peto(ai = ai, bi = bi, ci = ci, di = di)
+      } else {
+        measure <- "OR"
+        result <- cbamm_calc_or(ai = ai, bi = bi, ci = ci, di = di)
+      }
     } else {
       # Try meta package naming or common variants
       treat_event_col <- grep("tpos|treat.*event|event.*e|event.*treat|^ai$",
@@ -449,24 +544,47 @@ cbamm_auto <- function(data,
           control_nonevents <- data[[control_nonevent_col]]
         }
 
-        measure <- "OR"
-        result <- cbamm_calc_or(ai = treat_events, bi = treat_nonevents,
-                               ci = control_events, di = control_nonevents)
+        ai <- treat_events
+        bi <- treat_nonevents
+        ci <- control_events
+        di <- control_nonevents
+
+        # Check for rare events BEFORE choosing effect size
+        rare_event_check <- .check_rare_events(ai, bi, ci, di, verbose)
+
+        if (rare_event_check$use_peto) {
+          measure <- "PETO"
+          result <- cbamm_calc_peto(ai = ai, bi = bi, ci = ci, di = di)
+        } else {
+          measure <- "OR"
+          result <- cbamm_calc_or(ai = ai, bi = bi, ci = ci, di = di)
+        }
       } else {
         stop("Could not identify binary outcome columns. Need event counts for treatment and control groups.")
       }
     }
 
     if (verbose) {
-      cat("  Calculated effect size: Log Odds Ratio\n")
-      cat("  Reason: Binary outcome data (gold standard for meta-analysis)\n")
+      if (measure == "PETO") {
+        cat("  Calculated effect size: Peto Odds Ratio\n")
+        cat("  Reason: Rare events detected (<1%) - Peto OR more appropriate than standard OR\n")
+      } else {
+        cat("  Calculated effect size: Log Odds Ratio\n")
+        cat("  Reason: Binary outcome data (gold standard for meta-analysis)\n")
+      }
     }
 
     list(
       yi = result$yi,
       vi = result$vi,
       measure = measure,
-      decision = "Calculated log odds ratio from binary data (best practice for binary outcomes)"
+      decision = if (measure == "PETO") {
+        paste0("Calculated Peto odds ratio - rare events detected (",
+               rare_event_check$message, "). Peto OR reduces bias for rare events.")
+      } else {
+        paste0("Calculated log odds ratio from binary data (best practice for binary outcomes). ",
+               rare_event_check$message)
+      }
     )
 
   } else if (data_info$data_type == "continuous") {
