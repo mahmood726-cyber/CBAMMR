@@ -1,8 +1,8 @@
 Package: CBAMMR
 Type: Package
 Title: Comprehensive Bayesian and Advanced Meta-Analysis Methods in R
-Version: 8.1.0
-Date: 2025-10-28
+Version: 8.2.0
+Date: 2025-10-29
 Authors@R: c(
     person("Mahmood", "Developer", email = "mahmood726@gmail.com", role = c("aut", "cre")),
     person("Claude", "AI", role = "ctb")
@@ -13,11 +13,13 @@ Description: A comprehensive framework for conducting advanced meta-analyses wit
     RoBMA), robust variance estimation (CR2 RVE), multivariate meta-analysis with correlation
     sensitivity, rare-events methods (Peto OR, Mantel-Haenszel, GLMM), Bayesian model averaging
     with stacking, meta-regression with natural splines, machine learning heterogeneity analysis,
-    distribution-free methods (permutation tests, bootstrap CI, quantile regression), clinical
-    decision tools (EVPI, threshold analysis, decision curves, NNT), individualized treatment
-    effects, and comprehensive diagnostic tools. Supports hazard ratios (HR), risk ratios (RR),
-    odds ratios (OR), risk differences (RD), mean differences (MD), and standardized mean
-    differences (SMD).
+    distribution-free methods (permutation tests, bootstrap CI with BCa, quantile regression),
+    clinical decision tools (EVPI, threshold analysis, decision curves, NNT, individualized effects),
+    Bayesian methods (Bayesian bootstrap, Bayesian meta-regression with MCMC), comprehensive
+    sensitivity analysis (leave-one-out, publication bias, robustness scoring), professional
+    visualizations for all methods, and complete diagnostic tools. Includes interactive Shiny GUI
+    with all features. Supports hazard ratios (HR), risk ratios (RR), odds ratios (OR), risk
+    differences (RD), mean differences (MD), standardized mean differences (SMD), and RMST.
 License: Apache License (>= 2.0)
 Encoding: UTF-8
 LazyData: true

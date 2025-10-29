@@ -15,7 +15,7 @@ source("global.R", local = TRUE)
 # UI
 ui <- dashboardPage(
   header = dashboardHeader(
-    title = "CBAMMR v7.0",
+    title = "CBAMMR v8.2",
     rightUi = tags$div(
       class = "navbar-custom-menu",
       tags$span(style = "color: white; padding: 15px;",
