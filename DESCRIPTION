@@ -1,7 +1,7 @@
 Package: CBAMMR
 Type: Package
 Title: Comprehensive Bayesian and Advanced Meta-Analysis Methods in R
-Version: 8.5.0
+Version: 8.6.0
 Date: 2025-10-29
 Authors@R: c(
     person("Mahmood", "Developer", email = "mahmood726@gmail.com", role = c("aut", "cre")),
@@ -11,8 +11,9 @@ Description: Revolutionary intelligent meta-analysis system that removes researc
     of freedom and prevents p-hacking through automated, data-driven decisions. Features
     cbamm_auto() - the world's first fully automated meta-analysis function that detects data type,
     calculates appropriate effect sizes, selects optimal methods based on data characteristics,
-    assesses heterogeneity and publication bias, runs sensitivity analyses, and provides
-    evidence-based recommendations - all without subjective choices. Also includes ALL capabilities
+    assesses heterogeneity and publication bias, runs sensitivity analyses, provides
+    evidence-based recommendations, and generates journal-quality R Markdown results sections
+    ready for direct manuscript inclusion - all without subjective choices. Also includes ALL capabilities
     from metafor and meta packages: complete effect size calculation (40+ measures), all meta-analysis
     types (binary, continuous, proportions, rates, correlations), comprehensive heterogeneity toolkit
     (Q, I², H², tau², Bayes factors, R², decomposition), model selection (AIC/BIC/AICc, CV, LRT),

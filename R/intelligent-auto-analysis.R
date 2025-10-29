@@ -28,6 +28,10 @@ NULL
 #' @param verbose Logical; print detailed decision-making process?
 #' @param save_report Logical; save comprehensive report?
 #' @param report_file File path for report (if save_report=TRUE)
+#' @param generate_rmd Logical; generate journal-quality R Markdown results? (default TRUE)
+#' @param rmd_style Journal style for R Markdown ("APA", "AMA", "Nature", "Lancet", "BMJ", "JAMA")
+#' @param rmd_file File path to save R Markdown (optional, defaults to "results.Rmd")
+#' @param copy_to_clipboard Copy R Markdown to clipboard? (default TRUE)
 #'
 #' @return Object of class "cbamm_auto" with complete analysis results
 #' @export
@@ -40,10 +44,11 @@ NULL
 #' print(result)
 #' plot(result)
 #'
-#' # Continuous outcome data
+#' # Continuous outcome data with journal-quality output
 #' data(exercise_depression)
-#' result <- cbamm_auto(exercise_depression)
-#' print(result)
+#' result <- cbamm_auto(exercise_depression,
+#'                     generate_rmd = TRUE,
+#'                     rmd_style = "APA")
 #'
 #' # The function decides everything automatically!
 #' }
@@ -51,7 +56,11 @@ cbamm_auto <- function(data,
                        study_id = NULL,
                        verbose = TRUE,
                        save_report = FALSE,
-                       report_file = "cbamm_auto_report.html") {
+                       report_file = "cbamm_auto_report.html",
+                       generate_rmd = TRUE,
+                       rmd_style = c("APA", "AMA", "Nature", "Lancet", "BMJ", "JAMA"),
+                       rmd_file = "results.Rmd",
+                       copy_to_clipboard = TRUE) {
 
   if (verbose) {
     cat("\n═══════════════════════════════════════════════════════════════\n")
@@ -164,7 +173,7 @@ cbamm_auto <- function(data,
     # Metadata
     analysis_date = Sys.time(),
     elapsed_time = elapsed_time,
-    cbamm_version = "8.5.0"
+    cbamm_version = "8.6.0"
   )
 
   class(result) <- "cbamm_auto"
@@ -174,6 +183,30 @@ cbamm_auto <- function(data,
     cat("  Analysis Complete!\n")
     cat("  Time elapsed:", round(elapsed_time, 2), attr(elapsed_time, "units"), "\n")
     cat("═══════════════════════════════════════════════════════════════\n\n")
+  }
+
+  # Generate journal-quality R Markdown if requested
+  if (generate_rmd) {
+    rmd_style <- match.arg(rmd_style)
+
+    if (verbose) {
+      cat("Step 11: Generating journal-quality R Markdown results...\n")
+    }
+
+    rmd_output <- cbamm_generate_results(
+      result = result,
+      style = rmd_style,
+      include_figures = TRUE,
+      figure_format = "png",
+      figure_dpi = 300,
+      table_format = "markdown",
+      output_file = rmd_file,
+      copy_to_clipboard = copy_to_clipboard
+    )
+
+    result$rmd_results <- rmd_output
+    result$rmd_file <- rmd_file
+    result$rmd_style <- rmd_style
   }
 
   # Save report if requested
@@ -829,7 +862,17 @@ print.cbamm_auto <- function(x, ...) {
   cat("═══════════════════════════════════════════════════════════════\n\n")
 
   cat("Use plot(result) for visualizations\n")
-  cat("Use summary(result) for detailed decision log\n\n")
+  cat("Use summary(result) for detailed decision log\n")
+
+  # Mention R Markdown if generated
+  if (!is.null(x$rmd_file)) {
+    cat("\nJournal-quality R Markdown results:\n")
+    cat("  Style:", x$rmd_style, "\n")
+    cat("  File:", x$rmd_file, "\n")
+    cat("  Ready to paste into manuscript!\n")
+  }
+
+  cat("\n")
 
   invisible(x)
 }
