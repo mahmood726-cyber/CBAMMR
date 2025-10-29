@@ -1,29 +1,31 @@
 Package: CBAMMR
 Type: Package
 Title: Comprehensive Bayesian and Advanced Meta-Analysis Methods in R
-Version: 8.3.0
+Version: 8.4.0
 Date: 2025-10-29
 Authors@R: c(
     person("Mahmood", "Developer", email = "mahmood726@gmail.com", role = c("aut", "cre")),
     person("Claude", "AI", role = "ctb")
     )
-Description: A comprehensive framework for conducting advanced meta-analyses with
-    pairwise effect size calculation, transportability weighting, Hartung-Knapp-Sidik-Jonkman
-    adjustments, prediction intervals, publication bias assessment (PET-PEESE, selection models,
-    RoBMA), robust variance estimation (CR2 RVE), multivariate meta-analysis with correlation
-    sensitivity, rare-events methods (Peto OR, Mantel-Haenszel, GLMM), Bayesian model averaging
-    with stacking, meta-regression with natural splines, machine learning heterogeneity analysis,
-    distribution-free methods (permutation tests, bootstrap CI with BCa, quantile regression),
-    clinical decision tools (EVPI, threshold analysis, decision curves, NNT, individualized effects),
-    Bayesian methods (Bayesian bootstrap, Bayesian meta-regression with MCMC), comprehensive
-    sensitivity analysis (leave-one-out, publication bias, robustness scoring), professional
-    visualizations for all methods, and complete diagnostic tools. Seamlessly integrates all
-    plotting capabilities from metafor and meta packages through a unified interface with batch
-    plotting, cross-package comparisons, and enhanced diagnostics (forest, funnel, radial, Baujat,
-    L'Abbé, bubble, drapery, GOSH, influence, cumulative, trim-and-fill). Includes 10 example
-    datasets and interactive Shiny GUI with all features. Supports hazard ratios (HR), risk ratios
-    (RR), odds ratios (OR), risk differences (RD), mean differences (MD), standardized mean
-    differences (SMD), and RMST.
+Description: The most comprehensive meta-analysis package in R, providing ALL capabilities
+    from metafor and meta packages plus advanced methods. Includes complete effect size calculation
+    (40+ measures: OR, RR, RD, SMD, MD, correlations, proportions, rates, with conversion and
+    back-calculation from p-values), all meta-analysis types (binary via metabin, continuous via
+    metacont, proportions, incidence rates, correlations, mean changes), comprehensive heterogeneity
+    assessment (Q, I², H², tau², Bayes factors, R², decomposition), model selection (AIC/BIC/AICc,
+    cross-validation, likelihood ratio tests, FE vs RE comparison), complete small-study effects
+    toolkit (Egger, Begg, trim-and-fill, PET-PEESE, selection models, p-curve), pairwise effect
+    calculation, transportability weighting, Hartung-Knapp adjustments, prediction intervals,
+    robust variance estimation (CR2 RVE), multivariate meta-analysis, rare-events methods,
+    Bayesian model averaging, meta-regression with splines, ML heterogeneity analysis,
+    distribution-free methods (permutation, bootstrap BCa, quantile regression), clinical decision
+    tools (EVPI, decision curves, NNT, individualized effects, treatment rankings), Bayesian methods
+    (bootstrap, MCMC meta-regression), sensitivity analysis (leave-one-out, robustness scoring),
+    complete metafor/meta integration (forest, funnel, radial, Baujat, L'Abbé, bubble, drapery,
+    GOSH, influence, cumulative plots), unified plotting interface with batch generation and
+    cross-package comparison, 10 example datasets, and interactive Shiny GUI. Supports HR, RR, OR,
+    RD, MD, SMD, RMST, correlations, proportions, and incidence rates. The ultimate all-in-one
+    solution for meta-analysis.
 License: Apache License (>= 2.0)
 Encoding: UTF-8
 LazyData: true
