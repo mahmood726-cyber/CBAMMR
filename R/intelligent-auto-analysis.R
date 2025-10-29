@@ -78,6 +78,9 @@ cbamm_auto <- function(data,
   data_info <- .detect_data_type(data, study_id, verbose)
   decisions$data_detection <- data_info
 
+  # Extract study metadata for reporting
+  study_metadata <- .extract_study_metadata(data, study_id, data_info)
+
   # Step 2: Calculate effect sizes
   if (verbose) cat("\nStep 2: Calculating effect sizes...\n")
   es_result <- .auto_calculate_es(data, data_info, verbose)
@@ -137,6 +140,9 @@ cbamm_auto <- function(data,
     data_type = data_info$data_type,
     n_studies = length(es_result$yi),
     data_quality = quality,
+
+    # Study metadata for reporting
+    study_metadata = study_metadata,
 
     # Effect sizes
     yi = es_result$yi,
@@ -280,6 +286,84 @@ cbamm_auto <- function(data,
     decision = decision,
     n_studies = nrow(data),
     columns = col_names
+  )
+}
+
+
+#' Extract Study Metadata for Reporting
+#' @keywords internal
+.extract_study_metadata <- function(data, study_id, data_info) {
+
+  k <- nrow(data)
+
+  # Extract study identifiers/names
+  if (!is.null(study_id)) {
+    study_names <- data[[study_id]]
+  } else {
+    # Look for common study identifier columns
+    id_cols <- grep("study|author|trial|id|name", names(data),
+                    value = TRUE, ignore.case = TRUE)
+    if (length(id_cols) > 0) {
+      study_names <- data[[id_cols[1]]]
+    } else {
+      study_names <- paste0("Study ", seq_len(k))
+    }
+  }
+
+  # Extract year if available
+  year_cols <- grep("year|date|pub", names(data),
+                    value = TRUE, ignore.case = TRUE)
+  if (length(year_cols) > 0) {
+    years <- data[[year_cols[1]]]
+  } else {
+    years <- rep(NA, k)
+  }
+
+  # Extract sample sizes based on data type
+  if (data_info$data_type == "binary") {
+    # Try to find total sample sizes
+    n_cols <- grep("^n$|^n1|^n2|n\\.e|n\\.c|total.*n", names(data),
+                   value = TRUE, ignore.case = TRUE)
+    if (length(n_cols) >= 2) {
+      n_treat <- data[[n_cols[1]]]
+      n_control <- data[[n_cols[2]]]
+      total_n <- n_treat + n_control
+    } else if (any(c("ai", "bi", "ci", "di") %in% names(data))) {
+      # Calculate from 2x2 table
+      total_n <- data$ai + data$bi + data$ci + data$di
+    } else {
+      total_n <- rep(NA, k)
+    }
+  } else if (data_info$data_type == "continuous") {
+    n_cols <- grep("^n1|^n2|n\\.e|n\\.c", names(data),
+                   value = TRUE, ignore.case = TRUE)
+    if (length(n_cols) >= 2) {
+      n_treat <- data[[n_cols[1]]]
+      n_control <- data[[n_cols[2]]]
+      total_n <- n_treat + n_control
+    } else {
+      total_n <- rep(NA, k)
+    }
+  } else {
+    total_n <- rep(NA, k)
+  }
+
+  # Check for quality assessment
+  quality_cols <- grep("quality|rob|risk.*bias|jadad", names(data),
+                       value = TRUE, ignore.case = TRUE)
+  if (length(quality_cols) > 0) {
+    quality <- data[[quality_cols[1]]]
+  } else {
+    quality <- rep(NA, k)
+  }
+
+  list(
+    study_names = as.character(study_names),
+    years = years,
+    sample_sizes = total_n,
+    quality = quality,
+    k = k,
+    total_participants = if(all(is.na(total_n))) NA else sum(total_n, na.rm = TRUE)
   )
 }
 

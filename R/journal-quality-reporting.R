@@ -149,10 +149,18 @@ cbamm_generate_results <- function(result,
 #' @keywords internal
 .generate_overview_section <- function(result, style) {
 
+  # Get participant count
+  if (!is.null(result$study_metadata$total_participants) &&
+      !is.na(result$study_metadata$total_participants)) {
+    participants_text <- paste0(result$study_metadata$total_participants, " participants")
+  } else {
+    participants_text <- "[TOTAL PARTICIPANTS NOT AVAILABLE - PLEASE ADD]"
+  }
+
   text <- paste0(
     "## Study Selection and Characteristics\n\n",
     "A total of ", result$n_studies, " studies met the inclusion criteria for this meta-analysis. ",
-    "The included studies comprised [add total participants] participants. ",
+    "The included studies comprised ", participants_text, ". ",
     "Study characteristics are presented in Table 1.\n\n"
   )
 
@@ -164,12 +172,14 @@ cbamm_generate_results <- function(result,
 #' @keywords internal
 .generate_study_characteristics <- function(result, style, table_format) {
 
+  metadata <- result$study_metadata
+
   # Create basic characteristics table
   text <- paste0(
     "### Study Characteristics\n\n",
     "**Table 1.** Characteristics of Included Studies\n\n",
-    "| Study | Sample Size | Effect Size | SE | Weight | Quality |\n",
-    "|-------|-------------|-------------|-----|--------|----------|\n"
+    "| Study | Year | Sample Size | Effect Size | SE | Weight | Quality |\n",
+    "|-------|------|-------------|-------------|-----|--------|----------|\n"
   )
 
   # Add rows for each study
@@ -177,19 +187,54 @@ cbamm_generate_results <- function(result,
     sei <- sqrt(result$vi[i])
     weight <- (1/result$vi[i]) / sum(1/result$vi) * 100
 
+    # Get study name
+    study_name <- metadata$study_names[i]
+
+    # Get year
+    year_text <- if (!is.na(metadata$years[i])) {
+      as.character(metadata$years[i])
+    } else {
+      "—"
+    }
+
+    # Get sample size
+    n_text <- if (!is.na(metadata$sample_sizes[i])) {
+      as.character(metadata$sample_sizes[i])
+    } else {
+      "—"
+    }
+
+    # Get quality
+    quality_text <- if (!is.na(metadata$quality[i])) {
+      as.character(metadata$quality[i])
+    } else {
+      "—"
+    }
+
     text <- paste0(
       text,
-      "| Study ", i, " | [N] | ",
+      "| ", study_name, " | ",
+      year_text, " | ",
+      n_text, " | ",
       sprintf("%.3f", result$yi[i]), " | ",
       sprintf("%.3f", sei), " | ",
-      sprintf("%.1f%%", weight), " | [Quality] |\n"
+      sprintf("%.1f%%", weight), " | ",
+      quality_text, " |\n"
     )
+  }
+
+  # Note about quality
+  quality_note <- if (all(is.na(metadata$quality))) {
+    "Quality assessment not provided in data."
+  } else {
+    "Quality assessed using risk of bias tool."
   }
 
   text <- paste0(
     text,
-    "\n*Note.* SE = Standard Error. Quality assessed using [specify tool]. ",
-    "Effect sizes are reported as ", result$effect_size_measure, ".\n\n"
+    "\n*Note.* SE = Standard Error. ", quality_note, " ",
+    "Effect sizes are reported as ", result$effect_size_measure, ". ",
+    "— indicates data not available in source.\n\n"
   )
 
   return(text)
@@ -200,35 +245,47 @@ cbamm_generate_results <- function(result,
 #' @keywords internal
 .generate_main_results <- function(result, style) {
 
+  # Determine direction
+  if (result$estimate > 0) {
+    direction <- "positive"
+  } else if (result$estimate < 0) {
+    direction <- "negative"
+  } else {
+    direction <- "null"
+  }
+
+  # Determine significance
+  if (result$pval < 0.05) {
+    sig_text <- "statistically significant"
+  } else {
+    sig_text <- "not statistically significant"
+  }
+
   # Format based on style
   if (style == "APA") {
-    results_text <- sprintf(
+    results_text <- paste0(
       "## Meta-Analysis Results\n\n",
       "The random-effects meta-analysis revealed a pooled effect size of ",
-      "%.3f (95%% CI [%.3f, %.3f], *p* %s), ",
-      "indicating [describe direction and magnitude of effect]. ",
-      "This estimate was derived using the %s estimator for between-study variance (tau²). ",
+      sprintf("%.3f", result$estimate),
+      " (95% CI [", sprintf("%.3f", result$ci_lb), ", ", sprintf("%.3f", result$ci_ub), "], *p* ",
+      .format_pvalue(result$pval, style), "), ",
+      "indicating a ", direction, " effect that is ", sig_text, ". ",
+      "This estimate was derived using the ", result$estimator,
+      " estimator for between-study variance (tau²). ",
       "The forest plot displaying individual study effect sizes and the pooled estimate ",
-      "is presented in Figure 1.\n\n",
-      result$estimate,
-      result$ci_lb,
-      result$ci_ub,
-      .format_pvalue(result$pval, style),
-      result$estimator
+      "is presented in Figure 1.\n\n"
     )
   } else {
     # Generic format for other styles
-    results_text <- sprintf(
+    results_text <- paste0(
       "## Meta-Analysis Results\n\n",
-      "Random-effects meta-analysis yielded a pooled effect of %.3f ",
-      "(95%% CI %.3f to %.3f; p %s). ",
-      "Between-study variance was estimated using %s. ",
-      "See Figure 1 for the forest plot.\n\n",
-      result$estimate,
-      result$ci_lb,
-      result$ci_ub,
-      .format_pvalue(result$pval, style),
-      result$estimator
+      "Random-effects meta-analysis yielded a pooled effect of ",
+      sprintf("%.3f", result$estimate),
+      " (95% CI ", sprintf("%.3f", result$ci_lb), " to ", sprintf("%.3f", result$ci_ub),
+      "; p ", .format_pvalue(result$pval, style), "). ",
+      "The effect was ", sig_text, ". ",
+      "Between-study variance was estimated using ", result$estimator, ". ",
+      "See Figure 1 for the forest plot.\n\n"
     )
   }
 
@@ -249,39 +306,65 @@ cbamm_generate_results <- function(result,
 
   het <- result$heterogeneity
 
+  # Determine heterogeneity level for opening sentence
+  if (het$I2 < 25) {
+    het_level <- "Low heterogeneity"
+  } else if (het$I2 < 50) {
+    het_level <- "Moderate heterogeneity"
+  } else if (het$I2 < 75) {
+    het_level <- "Substantial heterogeneity"
+  } else {
+    het_level <- "Considerable heterogeneity"
+  }
+
+  # Interpret prediction interval width
+  pi_width <- het$pi_ub - het$pi_lb
+  pooled_se <- abs(het$pi_ub - het$pi_lb) / (2 * 1.96)  # Approximate
+  if (pi_width > abs(het$pi_ub - het$pi_lb) * 2) {
+    pi_interpretation <- "indicating substantial variation in the expected range of effects in future studies"
+  } else {
+    pi_interpretation <- "suggesting relatively consistent effects expected in future studies"
+  }
+
   text <- paste0(
     "## Heterogeneity Assessment\n\n",
-    "Substantial heterogeneity was observed among the included studies ",
+    het_level, " was observed among the included studies ",
     sprintf("(*I*² = %.1f%%, ", het$I2),
     sprintf("*Q* = %.2f, ", het$Q),
     sprintf("df = %d, ", het$Q_df),
     sprintf("*p* %s; ", .format_pvalue(het$Q_pval, style)),
     sprintf("tau² = %.4f). ", het$tau2),
     .interpret_heterogeneity_text(het$I2), " ",
-    "The prediction interval for the true effect in a new study was ",
+    "The 95% prediction interval for the true effect in a new study was ",
     sprintf("[%.3f, %.3f], ", het$pi_lb, het$pi_ub),
-    "indicating [describe range of expected effects].\n\n"
+    pi_interpretation, ". ",
+    "This interval represents the range in which we would expect 95% of true effects to fall in similar studies.\n\n"
   )
 
   # Add interpretation
   if (het$I2 > 75) {
     text <- paste0(
       text,
-      "The high level of heterogeneity suggests considerable variability in treatment effects across studies, ",
-      "which may be attributed to differences in [list potential sources: populations, ",
-      "interventions, methodological quality, etc.]. ",
-      "This heterogeneity was further explored through [subgroup analyses/meta-regression].\n\n"
+      "The high level of heterogeneity suggests considerable variability in effects across studies. ",
+      "Potential sources of heterogeneity may include differences in study populations (e.g., age, ",
+      "disease severity, baseline characteristics), intervention characteristics (e.g., dose, duration, ",
+      "delivery method), comparison conditions, outcome measurement methods, study design features, ",
+      "or methodological quality. Exploratory subgroup analyses or meta-regression could help identify ",
+      "sources of heterogeneity, though such analyses should be interpreted cautiously as hypothesis-generating ",
+      "rather than confirmatory. Pooled estimates should be interpreted with caution given the high heterogeneity.\n\n"
     )
   } else if (het$I2 > 50) {
     text <- paste0(
       text,
-      "The moderate-to-substantial heterogeneity observed warrants consideration of potential ",
-      "sources of variability between studies.\n\n"
+      "The moderate-to-substantial heterogeneity observed warrants careful consideration. ",
+      "Potential sources may include variations in populations, interventions, or study methods. ",
+      "While pooling is still reasonable, results should be interpreted recognizing this variability.\n\n"
     )
   } else {
     text <- paste0(
       text,
-      "The relatively low heterogeneity suggests consistent effects across studies.\n\n"
+      "The relatively low heterogeneity suggests reasonably consistent effects across studies, ",
+      "supporting the appropriateness of pooling and generalizability of findings.\n\n"
     )
   }
 
@@ -526,36 +609,76 @@ cbamm_generate_results <- function(result,
 #' @keywords internal
 .generate_summary_section <- function(result, style) {
 
+  # Create main finding summary
+  direction_text <- if (result$estimate > 0) "a positive effect" else if (result$estimate < 0) "a negative effect" else "no effect"
+  sig_text <- if (result$pval < 0.05) "statistically significant" else "not statistically significant"
+
   text <- paste0(
     "## Summary of Findings\n\n",
     "In summary, this meta-analysis of ", result$n_studies, " studies ",
-    "revealed [describe main finding in clinical terms]. "
+    "revealed ", direction_text, " (pooled estimate: ", sprintf("%.3f", result$estimate),
+    ", 95% CI [", sprintf("%.3f", result$ci_lb), ", ", sprintf("%.3f", result$ci_ub),
+    "]) that was ", sig_text, ". "
   )
 
   if (result$recommendations$confidence_level == "HIGH") {
     text <- paste0(
       text,
-      "The evidence base is robust, with high-quality data, ",
-      sprintf("minimal heterogeneity concerns (though I² = %.1f%%), ", result$heterogeneity$I2),
-      "little evidence of publication bias, and stable findings across sensitivity analyses. ",
-      "These results provide strong evidence for [clinical conclusion].\n\n"
+      "The evidence base is robust, with ", tolower(result$data_quality$quality_level), "-quality data, ",
+      if (result$heterogeneity$I2 < 50) {
+        "low-to-moderate heterogeneity"
+      } else {
+        sprintf("heterogeneity (I² = %.1f%%) that was explored and considered", result$heterogeneity$I2)
+      },
+      ", little evidence of publication bias (", result$publication_bias$concern_level, " concern), ",
+      "and stable findings across sensitivity analyses (robustness score: ",
+      sprintf("%.0f/100", result$sensitivity$robustness_score), "). ",
+      "These results provide strong evidence that should inform clinical practice and policy, though ",
+      "the clinical significance should be evaluated in the context of the specific outcome and population.\n\n"
     )
   } else if (result$recommendations$confidence_level == "MODERATE") {
+    # Identify concerns
+    concerns <- c()
+    if (result$heterogeneity$I2 > 50) concerns <- c(concerns, "heterogeneity")
+    if (result$publication_bias$concern_level != "LOW") concerns <- c(concerns, "potential publication bias")
+    if (result$sensitivity$robustness_score < 70) concerns <- c(concerns, "sensitivity to individual studies")
+    if (result$data_quality$quality_level %in% c("Moderate", "Poor")) concerns <- c(concerns, "data quality")
+
+    concerns_text <- if (length(concerns) > 0) {
+      paste(concerns, collapse = ", ")
+    } else {
+      "methodological limitations"
+    }
+
     text <- paste0(
       text,
       "The overall quality of evidence is moderate. ",
-      "While the findings suggest [clinical conclusion], ",
-      "there are some concerns regarding [list issues based on diagnostics]. ",
+      "While the findings suggest ", direction_text, " that is ", sig_text, ", ",
+      "there are some concerns regarding ", concerns_text, ". ",
+      "Results should be interpreted with appropriate caution. ",
       "Further high-quality studies would strengthen confidence in these conclusions.\n\n"
     )
   } else {
+    # Identify specific concerns for LOW confidence
+    concerns <- c()
+    if (result$heterogeneity$I2 > 75) concerns <- c(concerns, "high heterogeneity")
+    if (result$publication_bias$concern_level == "HIGH") concerns <- c(concerns, "strong evidence of publication bias")
+    if (result$sensitivity$robustness_score < 50) concerns <- c(concerns, "sensitivity to individual studies")
+    if (result$data_quality$quality_level == "Poor") concerns <- c(concerns, "poor data quality")
+
+    concerns_text <- if (length(concerns) > 0) {
+      paste(concerns, collapse = ", ")
+    } else {
+      "multiple methodological concerns"
+    }
+
     text <- paste0(
       text,
-      "The quality of evidence is limited due to ",
-      "[list specific concerns: heterogeneity, publication bias, sensitivity]. ",
-      "While results suggest [clinical conclusion], ",
-      "these findings should be interpreted with caution, ",
-      "and additional well-designed studies are needed.\n\n"
+      "The quality of evidence is limited due to ", concerns_text, ". ",
+      "While results suggest ", direction_text, ", ",
+      "these findings should be interpreted with substantial caution. ",
+      "The effect estimate may change considerably with additional well-designed studies. ",
+      "More research is needed before drawing firm conclusions.\n\n"
     )
   }
 
@@ -604,16 +727,26 @@ cbamm_generate_results <- function(result,
     # Convert log OR to OR
     or <- exp(es)
     if (or > 1) {
-      return(sprintf("The odds ratio of %.2f indicates that [treatment/exposure] ",
-                    "increases the odds of [outcome] by approximately %.0f%%.",
-                    or, (or - 1) * 100))
+      pct_change <- (or - 1) * 100
+      return(paste0(
+        "The odds ratio of ", sprintf("%.2f", or), " (log OR = ", sprintf("%.2f", es), ") ",
+        "indicates that the odds of the outcome are ", sprintf("%.0f%%", pct_change),
+        " higher in the treatment/exposure group compared to the control group. ",
+        "Note: Odds ratios should be interpreted carefully and ",
+        "consider converting to risk ratios for rare outcomes if baseline risk is known."
+      ))
     } else {
-      return(sprintf("The odds ratio of %.2f indicates that [treatment/exposure] ",
-                    "decreases the odds of [outcome] by approximately %.0f%%.",
-                    or, (1 - or) * 100))
+      pct_change <- (1 - or) * 100
+      return(paste0(
+        "The odds ratio of ", sprintf("%.2f", or), " (log OR = ", sprintf("%.2f", es), ") ",
+        "indicates that the odds of the outcome are ", sprintf("%.0f%%", pct_change),
+        " lower in the treatment/exposure group compared to the control group. ",
+        "Note: Odds ratios should be interpreted carefully and ",
+        "consider converting to risk ratios for rare outcomes if baseline risk is known."
+      ))
     }
   } else if (measure == "SMD" || grepl("standardized", measure, ignore.case = TRUE)) {
-    # Cohen's d interpretation
+    # Cohen's d interpretation with context
     abs_es <- abs(es)
     if (abs_es < 0.2) {
       magnitude <- "negligible"
@@ -625,10 +758,26 @@ cbamm_generate_results <- function(result,
       magnitude <- "large"
     }
 
-    return(sprintf("The standardized mean difference of %.2f represents a %s effect size, ",
-                  es, magnitude))
+    direction_text <- if (es > 0) {
+      "favoring the treatment group"
+    } else {
+      "favoring the control group"
+    }
+
+    return(paste0(
+      "The standardized mean difference of ", sprintf("%.2f", es),
+      " represents a ", magnitude, " effect size ", direction_text, " (Cohen's benchmarks). ",
+      "Note that these benchmarks are general guidelines and the clinical importance ",
+      "should be evaluated in the specific context of the outcome being measured. ",
+      "Consider reporting the effect in the original units if possible for clinical interpretation."
+    ))
   } else {
-    return(sprintf("The effect size of %.2f indicates [describe clinical meaning].", es))
+    return(paste0(
+      "The effect size of ", sprintf("%.3f", es),
+      " should be interpreted in the context of the specific measure (",
+      measure, ") and the clinical/practical importance for the outcome of interest. ",
+      "Statistical significance does not necessarily imply clinical significance."
+    ))
   }
 }
 
