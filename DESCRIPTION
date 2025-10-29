@@ -1,7 +1,7 @@
 Package: CBAMMR
 Type: Package
 Title: Comprehensive Bayesian and Advanced Meta-Analysis Methods in R
-Version: 8.2.0
+Version: 8.3.0
 Date: 2025-10-29
 Authors@R: c(
     person("Mahmood", "Developer", email = "mahmood726@gmail.com", role = c("aut", "cre")),
@@ -17,9 +17,13 @@ Description: A comprehensive framework for conducting advanced meta-analyses wit
     clinical decision tools (EVPI, threshold analysis, decision curves, NNT, individualized effects),
     Bayesian methods (Bayesian bootstrap, Bayesian meta-regression with MCMC), comprehensive
     sensitivity analysis (leave-one-out, publication bias, robustness scoring), professional
-    visualizations for all methods, and complete diagnostic tools. Includes interactive Shiny GUI
-    with all features. Supports hazard ratios (HR), risk ratios (RR), odds ratios (OR), risk
-    differences (RD), mean differences (MD), standardized mean differences (SMD), and RMST.
+    visualizations for all methods, and complete diagnostic tools. Seamlessly integrates all
+    plotting capabilities from metafor and meta packages through a unified interface with batch
+    plotting, cross-package comparisons, and enhanced diagnostics (forest, funnel, radial, Baujat,
+    L'Abbé, bubble, drapery, GOSH, influence, cumulative, trim-and-fill). Includes 10 example
+    datasets and interactive Shiny GUI with all features. Supports hazard ratios (HR), risk ratios
+    (RR), odds ratios (OR), risk differences (RD), mean differences (MD), standardized mean
+    differences (SMD), and RMST.
 License: Apache License (>= 2.0)
 Encoding: UTF-8
 LazyData: true
@@ -41,6 +45,7 @@ Imports:
     parallel,
     grDevices
 Suggests:
+    meta (>= 6.0.0),
     WeightIt (>= 0.12.0),
     cobalt (>= 4.3.0),
     brms (>= 2.16.0),
