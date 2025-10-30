@@ -23,7 +23,8 @@ NULL
 #' This removes researcher degrees of freedom and standardizes methodology,
 #' preventing p-hacking and ensuring best practices.
 #'
-#' @param data Data frame containing study data
+#' @param data Data frame containing study data (can be read from CSV via read.csv())
+#' @param pathway Analysis pathway: "standard" (default, for journal submissions) or "advanced" (methodological research)
 #' @param study_id Column name for study identifier (optional)
 #' @param verbose Logical; print detailed decision-making process?
 #' @param save_report Logical; save comprehensive report?
@@ -38,21 +39,23 @@ NULL
 #'
 #' @examples
 #' \dontrun{
+#' # Standard pathway (default) - for journal submissions
+#' data <- read.csv("my_data.csv")
+#' result <- cbamm_auto(data, pathway = "standard", rmd_style = "APA")
+#'
+#' # Advanced pathway - for methodological research
+#' result_adv <- cbamm_auto(data, pathway = "advanced")
+#'
 #' # Binary outcome data
 #' data(bcg_vaccine)
 #' result <- cbamm_auto(bcg_vaccine)
 #' print(result)
 #' plot(result)
 #'
-#' # Continuous outcome data with journal-quality output
-#' data(exercise_depression)
-#' result <- cbamm_auto(exercise_depression,
-#'                     generate_rmd = TRUE,
-#'                     rmd_style = "APA")
-#'
 #' # The function decides everything automatically!
 #' }
 cbamm_auto <- function(data,
+                       pathway = c("standard", "advanced"),
                        study_id = NULL,
                        verbose = TRUE,
                        save_report = FALSE,
@@ -62,15 +65,25 @@ cbamm_auto <- function(data,
                        rmd_file = "results.Rmd",
                        copy_to_clipboard = TRUE) {
 
+  # Validate and set pathway
+  pathway <- match.arg(pathway)
+
   if (verbose) {
     cat("\n═══════════════════════════════════════════════════════════════\n")
     cat("  CBAMM Intelligent Automated Meta-Analysis System\n")
     cat("  Making evidence-based decisions from your data\n")
+    cat("  Pathway:", toupper(pathway), "\n")
+    if (pathway == "standard") {
+      cat("  (Validated methods for journal submissions)\n")
+    } else {
+      cat("  (Cutting-edge methods for methodological research)\n")
+    }
     cat("═══════════════════════════════════════════════════════════════\n\n")
   }
 
   # Initialize decision log
   decisions <- list()
+  decisions$pathway <- pathway
   start_time <- Sys.time()
 
   # Step 1: Detect data type and structure
@@ -131,11 +144,38 @@ cbamm_auto <- function(data,
   plots <- .auto_create_plots(es_result$yi, es_result$vi,
                                data_info$data_type, verbose)
 
+  # Step 11: Advanced pathway methods (if selected)
+  advanced_results <- NULL
+  if (pathway == "advanced") {
+    if (verbose) {
+      cat("\n═══════════════════════════════════════════════════════════════\n")
+      cat("  ADVANCED PATHWAY: Additional Analyses\n")
+      cat("═══════════════════════════════════════════════════════════════\n")
+    }
+
+    advanced_results <- .run_advanced_analyses(
+      yi = es_result$yi,
+      vi = es_result$vi,
+      data = data,
+      data_info = data_info,
+      verbose = verbose
+    )
+    decisions$advanced_analyses <- advanced_results
+  } else {
+    if (verbose) {
+      cat("\n  Note: Using STANDARD pathway (validated methods only)\n")
+      cat("  For advanced methods (Bayesian, transportability, etc.),\n")
+      cat("  re-run with pathway = 'advanced'\n")
+    }
+  }
+
   end_time <- Sys.time()
   elapsed_time <- end_time - start_time
 
   # Compile complete results
   result <- list(
+    # Pathway information
+    pathway = pathway,
     # Data information
     data_type = data_info$data_type,
     n_studies = length(es_result$yi),
@@ -176,10 +216,13 @@ cbamm_auto <- function(data,
     # Visualizations
     plots = plots,
 
+    # Advanced pathway results (if applicable)
+    advanced_results = advanced_results,
+
     # Metadata
     analysis_date = Sys.time(),
     elapsed_time = elapsed_time,
-    cbamm_version = "8.6.0"
+    cbamm_version = "8.7.0"
   )
 
   class(result) <- "cbamm_auto"
@@ -221,6 +264,137 @@ cbamm_auto <- function(data,
   }
 
   return(result)
+}
+
+
+#' Run Advanced Pathway Analyses
+#' @keywords internal
+.run_advanced_analyses <- function(yi, vi, data, data_info, verbose) {
+
+  k <- length(yi)
+  advanced_results <- list()
+
+  # Distribution-free methods
+  if (verbose) cat("\nStep 11a: Distribution-free heterogeneity assessment...\n")
+  tryCatch({
+    # Check if function exists
+    if (exists("cbamm_quantile_heterogeneity")) {
+      advanced_results$quantile_het <- cbamm_quantile_heterogeneity(yi, vi)
+      if (verbose) cat("  ✓ Quantile-based heterogeneity completed\n")
+    }
+  }, error = function(e) {
+    if (verbose) cat("  Note: Quantile heterogeneity not available\n")
+  })
+
+  # Bayesian meta-analysis
+  if (verbose) cat("\nStep 11b: Bayesian meta-analysis...\n")
+  tryCatch({
+    if (exists("cbamm_bayesian") && k >= 3) {
+      advanced_results$bayesian <- cbamm_bayesian(
+        yi = yi,
+        vi = vi,
+        verbose = FALSE
+      )
+      if (verbose) {
+        cat("  ✓ Bayesian analysis completed\n")
+        cat("  → Posterior mean:", sprintf("%.3f", advanced_results$bayesian$posterior_mean), "\n")
+      }
+    } else {
+      if (verbose) cat("  Note: Bayesian analysis requires k >= 3 studies\n")
+    }
+  }, error = function(e) {
+    if (verbose) cat("  Note: Bayesian analysis not available\n")
+  })
+
+  # Clinical decision tools (for binary/continuous outcomes)
+  if (data_info$data_type %in% c("binary", "continuous")) {
+    if (verbose) cat("\nStep 11c: Clinical decision tools...\n")
+
+    # NNT calculation (for binary data)
+    if (data_info$data_type == "binary") {
+      tryCatch({
+        if (exists("cbamm_nnt") && !is.null(data$ai)) {
+          nnt_result <- cbamm_nnt(
+            ai = data$ai, bi = data$bi,
+            ci = data$ci, di = data$di
+          )
+          advanced_results$nnt <- nnt_result
+          if (verbose) {
+            cat("  ✓ NNT analysis completed\n")
+            cat("  → NNT:", sprintf("%.1f", nnt_result$nnt), "\n")
+          }
+        }
+      }, error = function(e) {
+        if (verbose) cat("  Note: NNT calculation not available\n")
+      })
+    }
+  }
+
+  # Fragility index (for binary outcomes)
+  if (data_info$data_type == "binary" && k >= 5) {
+    if (verbose) cat("\nStep 11d: Fragility index...\n")
+    tryCatch({
+      if (exists("cbamm_fragility")) {
+        fragility <- cbamm_fragility(yi, vi)
+        advanced_results$fragility <- fragility
+        if (verbose) {
+          cat("  ✓ Fragility index completed\n")
+          cat("  → Fragility:", fragility$index, "\n")
+        }
+      }
+    }, error = function(e) {
+      if (verbose) cat("  Note: Fragility index not available\n")
+    })
+  }
+
+  # Permutation tests
+  if (verbose) cat("\nStep 11e: Permutation tests...\n")
+  tryCatch({
+    if (exists("cbamm_permutation_test") && k >= 5) {
+      perm_result <- cbamm_permutation_test(
+        yi = yi,
+        vi = vi,
+        n_perm = 1000,
+        verbose = FALSE
+      )
+      advanced_results$permutation <- perm_result
+      if (verbose) {
+        cat("  ✓ Permutation test completed (1000 iterations)\n")
+        cat("  → Permutation p:", sprintf("%.3f", perm_result$p_value), "\n")
+      }
+    } else {
+      if (verbose) cat("  Note: Permutation tests require k >= 5 studies\n")
+    }
+  }, error = function(e) {
+    if (verbose) cat("  Note: Permutation tests not available\n")
+  })
+
+  # Advanced publication bias (PET-PEESE)
+  if (verbose) cat("\nStep 11f: PET-PEESE publication bias correction...\n")
+  tryCatch({
+    if (exists("cbamm_pet_peese") && k >= 10) {
+      pet_peese <- cbamm_pet_peese(yi, vi)
+      advanced_results$pet_peese <- pet_peese
+      if (verbose) {
+        cat("  ✓ PET-PEESE completed\n")
+        cat("  → PET-PEESE estimate:", sprintf("%.3f", pet_peese$estimate), "\n")
+      }
+    } else {
+      if (verbose) cat("  Note: PET-PEESE requires k >= 10 studies\n")
+    }
+  }, error = function(e) {
+    if (verbose) cat("  Note: PET-PEESE not available\n")
+  })
+
+  # Summary
+  if (verbose) {
+    cat("\n═══════════════════════════════════════════════════════════════\n")
+    cat("  Advanced analyses completed:", length(advanced_results), "methods\n")
+    cat("  Available in result$advanced_results\n")
+    cat("═══════════════════════════════════════════════════════════════\n")
+  }
+
+  return(advanced_results)
 }
 
 
