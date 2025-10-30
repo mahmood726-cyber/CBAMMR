@@ -800,34 +800,150 @@ cbamm_auto <- function(data,
 #' @keywords internal
 .auto_publication_bias <- function(yi, vi, estimator, verbose) {
 
-  # Run comprehensive assessment
+  k <- length(yi)
+
+  # CRITICAL: Check if we have enough studies for reliable bias assessment
+  if (k < 10) {
+    if (verbose) {
+      cat("  ⚠ WARNING: Only", k, "studies - publication bias tests unreliable with k < 10\n")
+      cat("  → Visual inspection of funnel plot recommended\n")
+      cat("  → Interpret any test results with extreme caution\n")
+    }
+
+    # Still run tests but mark as unreliable
+    pb <- cbamm_small_study_effects(yi, vi, method = estimator)
+
+    concern <- "UNCERTAIN"
+    decision <- paste0(
+      "Too few studies (k = ", k, ") for reliable publication bias assessment. ",
+      "Tests have low power and may produce misleading results. ",
+      "Visual inspection of funnel plot is more appropriate than formal tests."
+    )
+
+    if (verbose) {
+      cat("  Egger's test p =", sprintf("%.4f", pb$egger$p_value), "(unreliable with k < 10)\n")
+      cat("  Begg's test p =", sprintf("%.4f", pb$begg$p_value), "(unreliable with k < 10)\n")
+      cat("  Trim-and-fill:", pb$trimfill$n_imputed, "studies imputed (interpretation unclear)\n")
+      cat("  Concern level:", concern, "\n")
+      cat("  Decision:", decision, "\n")
+    }
+
+    warning(paste0(
+      "Publication bias tests unreliable with ", k, " studies (k < 10). ",
+      "Results should not be used to make strong conclusions about bias. ",
+      "Visual inspection of funnel plot recommended."
+    ), call. = FALSE)
+
+    return(list(
+      full_results = pb,
+      concern_level = concern,
+      decision = decision,
+      recommend_adjustment = FALSE,
+      reliable = FALSE,
+      k = k
+    ))
+  }
+
+  # Run comprehensive assessment (k >= 10)
   pb <- cbamm_small_study_effects(yi, vi, method = estimator)
 
-  # Make decision
-  n_sig_tests <- sum(c(
-    pb$egger$p_value < 0.05,
-    pb$begg$p_value < 0.05,
-    pb$fat$p_value < 0.05
-  ))
+  # IMPROVED DECISION LOGIC: Use evidence weighting, not vote counting
+  #
+  # Priority ranking (based on literature):
+  # 1. Egger's test - most widely used and validated
+  # 2. Trim-and-fill - practical impact assessment
+  # 3. Begg's test - lower power, less reliable
 
-  if (n_sig_tests >= 2) {
+  # Extract key indicators
+  egger_sig <- pb$egger$p_value < 0.05
+  egger_p <- pb$egger$p_value
+  egger_est <- abs(pb$egger$estimate)
+
+  begg_sig <- pb$begg$p_value < 0.05
+  begg_p <- pb$begg$p_value
+
+  trimfill_n <- pb$trimfill$n_imputed
+  trimfill_pct <- (trimfill_n / k) * 100
+
+  # Decision tree based on weighted evidence
+  if (egger_sig && egger_p < 0.01 && trimfill_n > 0) {
+    # Strong evidence: Egger highly significant AND trim-and-fill finds missing studies
     concern <- "HIGH"
-    decision <- "Multiple tests significant - strong evidence of small-study effects"
+    decision <- paste0(
+      "Strong evidence of publication bias: Egger's test highly significant (p = ",
+      sprintf("%.3f", egger_p), ") and trim-and-fill suggests ", trimfill_n,
+      " missing studies (", sprintf("%.0f%%", trimfill_pct), " of total). ",
+      "Effect estimate may be inflated."
+    )
     recommend_adjustment <- TRUE
-  } else if (n_sig_tests == 1) {
+
+  } else if (egger_sig && begg_sig) {
+    # Both primary tests significant
+    concern <- "HIGH"
+    decision <- paste0(
+      "Strong evidence of small-study effects: Both Egger's test (p = ",
+      sprintf("%.3f", egger_p), ") and Begg's test (p = ",
+      sprintf("%.3f", begg_p), ") are significant. ",
+      "Publication bias likely present."
+    )
+    recommend_adjustment <- TRUE
+
+  } else if (egger_sig && trimfill_n >= 3) {
+    # Egger significant with substantial trim-and-fill
+    concern <- "HIGH"
+    decision <- paste0(
+      "Strong evidence of publication bias: Egger's test significant (p = ",
+      sprintf("%.3f", egger_p), ") and trim-and-fill imputes ", trimfill_n,
+      " missing studies. Consider adjusted estimates."
+    )
+    recommend_adjustment <- TRUE
+
+  } else if (egger_sig || (begg_sig && trimfill_n > 0)) {
+    # Moderate evidence: One test significant
     concern <- "MODERATE"
-    decision <- "One test significant - some evidence of small-study effects"
-    recommend_adjustment <- TRUE
-  } else {
+    if (egger_sig) {
+      decision <- paste0(
+        "Moderate evidence of small-study effects: Egger's test significant (p = ",
+        sprintf("%.3f", egger_p), "). However, other indicators less conclusive. ",
+        "Interpret with caution."
+      )
+    } else {
+      decision <- paste0(
+        "Moderate evidence of small-study effects: Begg's test significant (p = ",
+        sprintf("%.3f", begg_p), ") and ", trimfill_n, " studies imputed. ",
+        "Though Egger's test not significant. Results inconclusive."
+      )
+    }
+    recommend_adjustment <- FALSE
+
+  } else if (egger_p < 0.10 || begg_p < 0.10) {
+    # Borderline evidence
     concern <- "LOW"
-    decision <- "No significant tests - little evidence of small-study effects"
+    decision <- paste0(
+      "Little evidence of publication bias, though some tests approach significance. ",
+      "No strong indication of bias (Egger p = ", sprintf("%.3f", egger_p),
+      ", Begg p = ", sprintf("%.3f", begg_p), ")."
+    )
+    recommend_adjustment <- FALSE
+
+  } else {
+    # No evidence
+    concern <- "LOW"
+    decision <- paste0(
+      "No significant evidence of publication bias. All tests non-significant ",
+      "(Egger p = ", sprintf("%.3f", egger_p), ", Begg p = ",
+      sprintf("%.3f", begg_p), ", ", trimfill_n, " studies imputed)."
+    )
     recommend_adjustment <- FALSE
   }
 
   if (verbose) {
-    cat("  Egger's test p =", sprintf("%.4f", pb$egger$p_value), "\n")
-    cat("  Begg's test p =", sprintf("%.4f", pb$begg$p_value), "\n")
-    cat("  Trim-and-fill:", pb$trimfill$n_imputed, "studies imputed\n")
+    cat("  Egger's test: p =", sprintf("%.4f", egger_p),
+        if(egger_sig) " (SIGNIFICANT)" else "", "\n")
+    cat("  Begg's test: p =", sprintf("%.4f", begg_p),
+        if(begg_sig) " (SIGNIFICANT)" else "", "\n")
+    cat("  Trim-and-fill:", trimfill_n, "studies imputed",
+        if(trimfill_n > 0) sprintf(" (%.0f%% of total)", trimfill_pct) else "", "\n")
     cat("  Concern level:", concern, "\n")
     cat("  Decision:", decision, "\n")
   }
@@ -837,7 +953,11 @@ cbamm_auto <- function(data,
     concern_level = concern,
     decision = decision,
     recommend_adjustment = recommend_adjustment,
-    n_sig_tests = n_sig_tests
+    reliable = TRUE,
+    k = k,
+    egger_significant = egger_sig,
+    begg_significant = begg_sig,
+    trimfill_imputed = trimfill_n
   )
 }
 
