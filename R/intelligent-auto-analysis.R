@@ -43,6 +43,7 @@ NULL
 #' @param custom_run_fragility For custom pathway: calculate fragility index? (default FALSE)
 #' @param custom_n_permutations For custom pathway: number of permutations (default 1000)
 #' @param custom_prior For custom pathway: Bayesian prior specification
+#' @param forest_style Forest plot style: "metafor" (metafor package), "meta" (meta package), "ggplot" (custom ggplot2), or "auto" (automatic selection)
 #'
 #' @return Object of class "cbamm_auto" with complete analysis results
 #' @export
@@ -81,6 +82,8 @@ cbamm_auto <- function(data,
                        rmd_style = c("APA", "AMA", "Nature", "Lancet", "BMJ", "JAMA"),
                        rmd_file = "results.Rmd",
                        copy_to_clipboard = TRUE,
+                       # Forest plot style
+                       forest_style = c("auto", "metafor", "meta", "ggplot"),
                        # Custom pathway parameters
                        custom_effect_measure = NULL,
                        custom_estimator = "REML",
@@ -95,6 +98,9 @@ cbamm_auto <- function(data,
 
   # Validate and set pathway
   pathway <- match.arg(pathway)
+
+  # Validate and set forest style
+  forest_style <- match.arg(forest_style)
 
   if (verbose) {
     cat("\n═══════════════════════════════════════════════════════════════\n")
@@ -315,7 +321,8 @@ cbamm_auto <- function(data,
     # Metadata
     analysis_date = Sys.time(),
     elapsed_time = elapsed_time,
-    cbamm_version = "8.8.0"
+    cbamm_version = "8.8.0",
+    forest_style = forest_style
   )
 
   class(result) <- "cbamm_auto"
