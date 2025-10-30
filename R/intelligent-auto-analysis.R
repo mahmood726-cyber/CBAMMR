@@ -24,7 +24,7 @@ NULL
 #' preventing p-hacking and ensuring best practices.
 #'
 #' @param data Data frame containing study data (can be read from CSV via read.csv())
-#' @param pathway Analysis pathway: "standard" (default, for journal submissions) or "advanced" (methodological research)
+#' @param pathway Analysis pathway: "standard" (default), "advanced", or "custom" (full control)
 #' @param study_id Column name for study identifier (optional)
 #' @param verbose Logical; print detailed decision-making process?
 #' @param save_report Logical; save comprehensive report?
@@ -33,6 +33,16 @@ NULL
 #' @param rmd_style Journal style for R Markdown ("APA", "AMA", "Nature", "Lancet", "BMJ", "JAMA")
 #' @param rmd_file File path to save R Markdown (optional, defaults to "results.Rmd")
 #' @param copy_to_clipboard Copy R Markdown to clipboard? (default TRUE)
+#' @param custom_effect_measure For custom pathway: specify effect size ("OR", "RR", "RD", "Peto", "SMD", "MD", etc.)
+#' @param custom_estimator For custom pathway: specify estimator ("REML", "ML", "DL", "EB", "SJ", "HS", "PM")
+#' @param custom_heterogeneity For custom pathway: vector of heterogeneity methods to run
+#' @param custom_pub_bias For custom pathway: vector of publication bias methods ("egger", "begg", "trimfill", "petpeese", etc.)
+#' @param custom_sensitivity For custom pathway: vector of sensitivity analyses ("loo", "cumulative", "influence", "baujat")
+#' @param custom_run_bayesian For custom pathway: run Bayesian analysis? (default FALSE)
+#' @param custom_run_permutation For custom pathway: run permutation tests? (default FALSE)
+#' @param custom_run_fragility For custom pathway: calculate fragility index? (default FALSE)
+#' @param custom_n_permutations For custom pathway: number of permutations (default 1000)
+#' @param custom_prior For custom pathway: Bayesian prior specification
 #'
 #' @return Object of class "cbamm_auto" with complete analysis results
 #' @export
@@ -46,16 +56,23 @@ NULL
 #' # Advanced pathway - for methodological research
 #' result_adv <- cbamm_auto(data, pathway = "advanced")
 #'
+#' # Custom pathway - for advanced practitioners with full control
+#' result_custom <- cbamm_auto(data,
+#'                              pathway = "custom",
+#'                              custom_effect_measure = "Peto",
+#'                              custom_estimator = "ML",
+#'                              custom_pub_bias = c("egger", "petpeese"),
+#'                              custom_run_bayesian = TRUE,
+#'                              custom_run_permutation = TRUE)
+#'
 #' # Binary outcome data
 #' data(bcg_vaccine)
 #' result <- cbamm_auto(bcg_vaccine)
 #' print(result)
 #' plot(result)
-#'
-#' # The function decides everything automatically!
 #' }
 cbamm_auto <- function(data,
-                       pathway = c("standard", "advanced"),
+                       pathway = c("standard", "advanced", "custom"),
                        study_id = NULL,
                        verbose = TRUE,
                        save_report = FALSE,
@@ -63,7 +80,18 @@ cbamm_auto <- function(data,
                        generate_rmd = TRUE,
                        rmd_style = c("APA", "AMA", "Nature", "Lancet", "BMJ", "JAMA"),
                        rmd_file = "results.Rmd",
-                       copy_to_clipboard = TRUE) {
+                       copy_to_clipboard = TRUE,
+                       # Custom pathway parameters
+                       custom_effect_measure = NULL,
+                       custom_estimator = "REML",
+                       custom_heterogeneity = NULL,
+                       custom_pub_bias = NULL,
+                       custom_sensitivity = NULL,
+                       custom_run_bayesian = FALSE,
+                       custom_run_permutation = FALSE,
+                       custom_run_fragility = FALSE,
+                       custom_n_permutations = 1000,
+                       custom_prior = NULL) {
 
   # Validate and set pathway
   pathway <- match.arg(pathway)
@@ -71,12 +99,18 @@ cbamm_auto <- function(data,
   if (verbose) {
     cat("\n═══════════════════════════════════════════════════════════════\n")
     cat("  CBAMM Intelligent Automated Meta-Analysis System\n")
-    cat("  Making evidence-based decisions from your data\n")
+    if (pathway != "custom") {
+      cat("  Making evidence-based decisions from your data\n")
+    } else {
+      cat("  Custom Configuration - Full Practitioner Control\n")
+    }
     cat("  Pathway:", toupper(pathway), "\n")
     if (pathway == "standard") {
       cat("  (Validated methods for journal submissions)\n")
-    } else {
+    } else if (pathway == "advanced") {
       cat("  (Cutting-edge methods for methodological research)\n")
+    } else if (pathway == "custom") {
+      cat("  (Expert mode - you control all methodological choices)\n")
     }
     cat("═══════════════════════════════════════════════════════════════\n\n")
   }
@@ -96,8 +130,22 @@ cbamm_auto <- function(data,
 
   # Step 2: Calculate effect sizes
   if (verbose) cat("\nStep 2: Calculating effect sizes...\n")
-  es_result <- .auto_calculate_es(data, data_info, verbose)
-  decisions$effect_size_calculation <- es_result$decision
+
+  if (pathway == "custom" && !is.null(custom_effect_measure)) {
+    # Custom pathway: use specified effect size
+    if (verbose) {
+      cat("  Using custom effect size measure:", custom_effect_measure, "\n")
+    }
+    es_result <- .custom_calculate_es(data, data_info, custom_effect_measure, verbose)
+    decisions$effect_size_calculation <- list(
+      measure = custom_effect_measure,
+      reason = "User-specified (custom pathway)"
+    )
+  } else {
+    # Standard/Advanced: automatic detection
+    es_result <- .auto_calculate_es(data, data_info, verbose)
+    decisions$effect_size_calculation <- es_result$decision
+  }
 
   # Step 3: Assess data quality
   if (verbose) cat("\nStep 3: Assessing data quality...\n")
@@ -106,7 +154,21 @@ cbamm_auto <- function(data,
 
   # Step 4: Choose meta-analysis method
   if (verbose) cat("\nStep 4: Choosing optimal meta-analysis method...\n")
-  method_choice <- .choose_ma_method(es_result$yi, es_result$vi, quality, verbose)
+
+  if (pathway == "custom") {
+    # Custom pathway: use specified estimator
+    if (verbose) {
+      cat("  Using custom estimator:", custom_estimator, "\n")
+    }
+    method_choice <- list(
+      method = "random",
+      estimator = custom_estimator,
+      justification = "User-specified (custom pathway)"
+    )
+  } else {
+    # Standard/Advanced: automatic selection
+    method_choice <- .choose_ma_method(es_result$yi, es_result$vi, quality, verbose)
+  }
   decisions$method_selection <- method_choice
 
   # Step 5: Run primary meta-analysis
@@ -146,6 +208,8 @@ cbamm_auto <- function(data,
 
   # Step 11: Advanced pathway methods (if selected)
   advanced_results <- NULL
+  custom_results <- NULL
+
   if (pathway == "advanced") {
     if (verbose) {
       cat("\n═══════════════════════════════════════════════════════════════\n")
@@ -161,11 +225,37 @@ cbamm_auto <- function(data,
       verbose = verbose
     )
     decisions$advanced_analyses <- advanced_results
+
+  } else if (pathway == "custom") {
+    if (verbose) {
+      cat("\n═══════════════════════════════════════════════════════════════\n")
+      cat("  CUSTOM PATHWAY: User-Specified Analyses\n")
+      cat("═══════════════════════════════════════════════════════════════\n")
+    }
+
+    custom_results <- .run_custom_analyses(
+      yi = es_result$yi,
+      vi = es_result$vi,
+      data = data,
+      data_info = data_info,
+      custom_pub_bias = custom_pub_bias,
+      custom_sensitivity = custom_sensitivity,
+      custom_run_bayesian = custom_run_bayesian,
+      custom_run_permutation = custom_run_permutation,
+      custom_run_fragility = custom_run_fragility,
+      custom_n_permutations = custom_n_permutations,
+      custom_prior = custom_prior,
+      custom_heterogeneity = custom_heterogeneity,
+      verbose = verbose
+    )
+    decisions$custom_analyses <- custom_results
+
   } else {
     if (verbose) {
       cat("\n  Note: Using STANDARD pathway (validated methods only)\n")
       cat("  For advanced methods (Bayesian, transportability, etc.),\n")
       cat("  re-run with pathway = 'advanced'\n")
+      cat("  For full control, re-run with pathway = 'custom'\n")
     }
   }
 
@@ -219,10 +309,13 @@ cbamm_auto <- function(data,
     # Advanced pathway results (if applicable)
     advanced_results = advanced_results,
 
+    # Custom pathway results (if applicable)
+    custom_results = custom_results,
+
     # Metadata
     analysis_date = Sys.time(),
     elapsed_time = elapsed_time,
-    cbamm_version = "8.7.0"
+    cbamm_version = "8.8.0"
   )
 
   class(result) <- "cbamm_auto"
@@ -395,6 +488,245 @@ cbamm_auto <- function(data,
   }
 
   return(advanced_results)
+}
+
+
+#' Run Custom Pathway Analyses
+#' @keywords internal
+.run_custom_analyses <- function(yi, vi, data, data_info,
+                                  custom_pub_bias, custom_sensitivity,
+                                  custom_run_bayesian, custom_run_permutation,
+                                  custom_run_fragility, custom_n_permutations,
+                                  custom_prior, custom_heterogeneity, verbose) {
+
+  k <- length(yi)
+  custom_results <- list()
+
+  # Custom heterogeneity methods
+  if (!is.null(custom_heterogeneity) && length(custom_heterogeneity) > 0) {
+    if (verbose) cat("\nCustom heterogeneity analyses:\n")
+    custom_results$heterogeneity_custom <- list()
+
+    for (method in custom_heterogeneity) {
+      if (verbose) cat("  Running:", method, "\n")
+      # Run specific heterogeneity method
+      tryCatch({
+        result <- switch(tolower(method),
+          "quantile" = if(exists("cbamm_quantile_heterogeneity")) cbamm_quantile_heterogeneity(yi, vi) else NULL,
+          "bootstrap" = if(exists("cbamm_bootstrap_heterogeneity")) cbamm_bootstrap_heterogeneity(yi, vi) else NULL,
+          NULL
+        )
+        if (!is.null(result)) {
+          custom_results$heterogeneity_custom[[method]] <- result
+          if (verbose) cat("    ✓ Completed\n")
+        }
+      }, error = function(e) {
+        if (verbose) cat("    Note: Method not available\n")
+      })
+    }
+  }
+
+  # Custom publication bias methods
+  if (!is.null(custom_pub_bias) && length(custom_pub_bias) > 0) {
+    if (verbose) cat("\nCustom publication bias analyses:\n")
+    custom_results$pub_bias_custom <- list()
+
+    for (method in custom_pub_bias) {
+      if (verbose) cat("  Running:", method, "\n")
+      tryCatch({
+        result <- switch(tolower(method),
+          "egger" = cbamm_egger_test(yi, vi),
+          "begg" = cbamm_begg_test(yi, vi),
+          "trimfill" = cbamm_trimfill(yi, vi),
+          "petpeese" = if(exists("cbamm_pet_peese")) cbamm_pet_peese(yi, vi) else NULL,
+          "selection" = if(exists("cbamm_selection_model")) cbamm_selection_model(yi, vi) else NULL,
+          NULL
+        )
+        if (!is.null(result)) {
+          custom_results$pub_bias_custom[[method]] <- result
+          if (verbose) cat("    ✓ Completed\n")
+        }
+      }, error = function(e) {
+        if (verbose) cat("    Note: Method not available or failed\n")
+      })
+    }
+  }
+
+  # Custom sensitivity analyses
+  if (!is.null(custom_sensitivity) && length(custom_sensitivity) > 0) {
+    if (verbose) cat("\nCustom sensitivity analyses:\n")
+    custom_results$sensitivity_custom <- list()
+
+    for (method in custom_sensitivity) {
+      if (verbose) cat("  Running:", method, "\n")
+      tryCatch({
+        result <- switch(tolower(method),
+          "loo" = cbamm_leave1out(yi, vi),
+          "cumulative" = cbamm_cumulative(yi, vi),
+          "influence" = cbamm_influence(yi, vi),
+          "baujat" = cbamm_baujat(yi, vi),
+          NULL
+        )
+        if (!is.null(result)) {
+          custom_results$sensitivity_custom[[method]] <- result
+          if (verbose) cat("    ✓ Completed\n")
+        }
+      }, error = function(e) {
+        if (verbose) cat("    Note: Method not available or failed\n")
+      })
+    }
+  }
+
+  # Bayesian analysis if requested
+  if (custom_run_bayesian) {
+    if (verbose) cat("\nBayesian meta-analysis:\n")
+    tryCatch({
+      if (exists("cbamm_bayesian") && k >= 3) {
+        bayes_args <- list(yi = yi, vi = vi, verbose = FALSE)
+        if (!is.null(custom_prior)) {
+          bayes_args$prior <- custom_prior
+        }
+        custom_results$bayesian <- do.call(cbamm_bayesian, bayes_args)
+        if (verbose) {
+          cat("  ✓ Bayesian analysis completed\n")
+          cat("  → Posterior mean:", sprintf("%.3f", custom_results$bayesian$posterior_mean), "\n")
+        }
+      } else {
+        if (verbose) cat("  Note: Requires k >= 3 studies\n")
+      }
+    }, error = function(e) {
+      if (verbose) cat("  Note: Bayesian analysis failed\n")
+    })
+  }
+
+  # Permutation tests if requested
+  if (custom_run_permutation) {
+    if (verbose) cat("\nPermutation test (", custom_n_permutations, " permutations):\n", sep = "")
+    tryCatch({
+      if (exists("cbamm_permutation_test") && k >= 3) {
+        custom_results$permutation <- cbamm_permutation_test(
+          yi = yi,
+          vi = vi,
+          n_perm = custom_n_permutations,
+          verbose = FALSE
+        )
+        if (verbose) {
+          cat("  ✓ Permutation test completed\n")
+          cat("  → Permutation p:", sprintf("%.3f", custom_results$permutation$p_value), "\n")
+        }
+      } else {
+        if (verbose) cat("  Note: Requires k >= 3 studies\n")
+      }
+    }, error = function(e) {
+      if (verbose) cat("  Note: Permutation test failed\n")
+    })
+  }
+
+  # Fragility index if requested
+  if (custom_run_fragility) {
+    if (verbose) cat("\nFragility index:\n")
+    tryCatch({
+      if (exists("cbamm_fragility") && data_info$data_type == "binary" && k >= 3) {
+        custom_results$fragility <- cbamm_fragility(yi, vi)
+        if (verbose) {
+          cat("  ✓ Fragility index completed\n")
+          cat("  → Fragility:", custom_results$fragility$index, "\n")
+        }
+      } else {
+        if (verbose) cat("  Note: Fragility index requires binary data and k >= 3\n")
+      }
+    }, error = function(e) {
+      if (verbose) cat("  Note: Fragility index calculation failed\n")
+    })
+  }
+
+  # Summary
+  if (verbose) {
+    cat("\n═══════════════════════════════════════════════════════════════\n")
+    cat("  Custom analyses completed:", length(custom_results), "categories\n")
+    cat("  Available in result$custom_results\n")
+    cat("═══════════════════════════════════════════════════════════════\n")
+  }
+
+  return(custom_results)
+}
+
+
+#' Custom Effect Size Calculation
+#' @keywords internal
+.custom_calculate_es <- function(data, data_info, custom_effect_measure, verbose) {
+
+  # Use user-specified effect size measure
+  measure <- custom_effect_measure
+
+  if (data_info$data_type == "binary") {
+    # Binary outcomes - calculate specified measure
+    if (measure == "Peto") {
+      es <- cbamm_calc_peto_or(
+        ai = data$ai, bi = data$bi,
+        ci = data$ci, di = data$di
+      )
+    } else if (measure %in% c("OR", "LogOR")) {
+      es <- cbamm_calc_or(
+        ai = data$ai, bi = data$bi,
+        ci = data$ci, di = data$di
+      )
+    } else if (measure %in% c("RR", "LogRR")) {
+      es <- cbamm_calc_rr(
+        ai = data$ai, bi = data$bi,
+        ci = data$ci, di = data$di
+      )
+    } else if (measure == "RD") {
+      es <- cbamm_calc_rd(
+        ai = data$ai, bi = data$bi,
+        ci = data$ci, di = data$di
+      )
+    } else {
+      # Try metafor's escalc for other measures
+      es <- escalc(measure = measure,
+                   ai = data$ai, bi = data$bi,
+                   ci = data$ci, di = data$di,
+                   data = data)
+    }
+
+  } else if (data_info$data_type == "continuous") {
+    # Continuous outcomes
+    if (measure %in% c("SMD", "Hedges")) {
+      es <- cbamm_calc_smd(
+        m1 = data$mean_treat, sd1 = data$sd_treat, n1 = data$n_treat,
+        m2 = data$mean_control, sd2 = data$sd_control, n2 = data$n_control
+      )
+    } else if (measure == "MD") {
+      es <- cbamm_calc_md(
+        m1 = data$mean_treat, sd1 = data$sd_treat, n1 = data$n_treat,
+        m2 = data$mean_control, sd2 = data$sd_control, n2 = data$n_control
+      )
+    } else {
+      # Try metafor's escalc
+      es <- escalc(measure = measure,
+                   m1i = data$mean_treat, sd1i = data$sd_treat, n1i = data$n_treat,
+                   m2i = data$mean_control, sd2i = data$sd_control, n2i = data$n_control,
+                   data = data)
+    }
+
+  } else if (data_info$data_type == "pre_calculated") {
+    # Already calculated
+    if (!is.null(data$vi)) {
+      es <- data.frame(yi = data$yi, vi = data$vi)
+    } else if (!is.null(data$sei)) {
+      es <- data.frame(yi = data$yi, vi = data$sei^2)
+    }
+  }
+
+  list(
+    yi = es$yi,
+    vi = es$vi,
+    measure = measure,
+    decision = list(
+      measure = measure,
+      reason = "User-specified (custom pathway)"
+    )
+  )
 }
 
 
