@@ -23,6 +23,9 @@
 #' }
 cbamm_fragility_index <- function(results, data, alpha = 0.05, direction = "loss") {
 
+  # Input validation
+  validate_meta_data(data, required_cols = NULL)
+
   if (!requireNamespace("metafor", quietly = TRUE)) {
     stop("metafor package required")
   }

@@ -200,6 +200,9 @@ install_cbamm_packages <- function() {
 #' env <- initialize_cbamm(config)
 #' }
 initialize_cbamm <- function(config = setup_cbamm()) {
+  # Input validation
+  validate_config(config)
+
   suppressPackageStartupMessages({
     requireNamespace("metafor", quietly = TRUE)
     requireNamespace("dplyr", quietly = TRUE)
@@ -224,6 +227,6 @@ initialize_cbamm <- function(config = setup_cbamm()) {
     suppressPackageStartupMessages(requireNamespace("puniform", quietly = TRUE))
 
   set.seed(config$seed)
-  suppressWarnings(try(RNGkind(sample.kind = "Rounding"), silent = TRUE))
+  suppressWarnings(safe_try(RNGkind(sample.kind = "Rounding"), context = "setting RNG kind", warn = FALSE))
   list(config = config, features = features)
 }

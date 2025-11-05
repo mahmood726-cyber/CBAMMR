@@ -9,8 +9,12 @@
 #' @return List with influence results
 #' @keywords internal
 run_influence <- function(fit) {
-  inf <- try(metafor::influence(fit), silent = TRUE)
-  if (inherits(inf, "try-error")) return(NULL)
+  inf <- safe_try(
+    metafor::influence(fit),
+    context = "influence analysis",
+    return_on_error = NULL
+  )
+  if (is.null(inf)) return(NULL)
   s <- summary(inf)
   cat("\n=== INFLUENCE / OUTLIERS ===\n"); print(s)
   invisible(list(inf = inf, summary = s))
@@ -26,10 +30,18 @@ run_influence <- function(fit) {
 #' @keywords internal
 run_small_study_tests <- function(fit) {
   out <- list()
-  eg <- try(metafor::regtest(fit, model = "lm"), silent = TRUE)
-  if (!inherits(eg, "try-error")) { cat(sprintf("\nEgger test (lm): z=%.3f, p=%.3f\n", eg$zval, eg$pval)); out$egger <- eg }
-  bg <- try(metafor::ranktest(fit), silent = TRUE)
-  if (!inherits(bg, "try-error")) { cat(sprintf("Begg rank test: Kendall τ=%.3f, p=%.3f\n", bg$tau, bg$pval)); out$begg <- bg }
+  eg <- safe_try(
+    metafor::regtest(fit, model = "lm"),
+    context = "Egger regression test",
+    return_on_error = NULL
+  )
+  if (!is.null(eg)) { cat(sprintf("\nEgger test (lm): z=%.3f, p=%.3f\n", eg$zval, eg$pval)); out$egger <- eg }
+  bg <- safe_try(
+    metafor::ranktest(fit),
+    context = "Begg rank correlation test",
+    return_on_error = NULL
+  )
+  if (!is.null(bg)) { cat(sprintf("Begg rank test: Kendall τ=%.3f, p=%.3f\n", bg$tau, bg$pval)); out$begg <- bg }
   invisible(out)
 }
 
@@ -45,8 +57,12 @@ run_robust_location <- function(data) {
   if (!requireNamespace("MASS", quietly = TRUE)) { cat("\n=== ROBUST LOCATION ===\nSkipped (MASS not available)\n"); return(NULL) }
   cat("\n=== ROBUST LOCATION (M-estimator; weights=1/vi) ===\n")
   w <- 1/(data$se^2)
-  fit <- try(MASS::rlm(yi ~ 1, weights = w, psi = MASS::psi.huber, data = data), silent = TRUE)
-  if (inherits(fit, "try-error")) { cat("rlm failed.\n"); return(NULL) }
+  fit <- safe_try(
+    MASS::rlm(yi ~ 1, weights = w, psi = MASS::psi.huber, data = data),
+    context = "robust location estimation with rlm",
+    return_on_error = NULL
+  )
+  if (is.null(fit)) { cat("rlm failed.\n"); return(NULL) }
   est <- coef(fit)[1]; se <- summary(fit)$coefficients[1,2]
   cat(sprintf("rlm intercept (model scale): %.3f (SE %.3f)\n", est, se))
   invisible(list(fit = fit, est = est, se = se))

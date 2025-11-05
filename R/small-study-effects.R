@@ -208,6 +208,9 @@ plot.cbamm_small_study <- function(x, ...) {
 #' @return Object of class "cbamm_egger" with test results
 #' @export
 cbamm_egger_test <- function(yi, vi, method = "REML") {
+  # Input validation
+  validate_meta_inputs(yi, vi)
+  validate_sample_size(length(yi), "publication-bias", warning_only = TRUE)
 
   if (!requireNamespace("metafor", quietly = TRUE)) {
     stop("Package 'metafor' is required")
@@ -257,6 +260,10 @@ cbamm_egger_test <- function(yi, vi, method = "REML") {
 #' @return Object of class "cbamm_begg" with test results
 #' @export
 cbamm_begg_test <- function(yi, vi) {
+
+  # Input validation
+  validate_meta_inputs(yi, vi)
+  validate_sample_size(length(yi), "publication-bias", warning_only = TRUE)
 
   # Kendall's tau between effect sizes and their variances
   test_result <- cor.test(yi, vi, method = "kendall")
@@ -458,6 +465,10 @@ print.cbamm_selection_model <- function(x, ...) {
 #' plot(result)
 #' }
 cbamm_pcurve <- function(yi, vi) {
+
+  # Input validation
+  validate_meta_inputs(yi, vi)
+  validate_sample_size(length(yi), "publication-bias", warning_only = TRUE)
 
   # Calculate p-values
   sei <- sqrt(vi)

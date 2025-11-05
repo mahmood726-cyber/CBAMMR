@@ -56,16 +56,35 @@ run_mv_meta <- function(data, config, rho = NULL) {
   V <- .build_V_block(vi = data$se^2, study_id = data$study_id, rho = rho)
   mm <- .cbamm_measure_meta(config$effect_measure)
   args <- list(yi = data$yi, V = V, random = ~ 1 | study_id, test = if (config$use_hksj) "knha" else "z", method = config$mv_tau_estimator)
-  fit <- try(do.call(metafor::rma.mv, c(args, list(weights = data$analysis_weights))), silent = TRUE)
-  if (inherits(fit, "try-error")) fit <- try(do.call(metafor::rma.mv, args), silent = TRUE)
-  if (inherits(fit, "try-error")) { cat("rma.mv failed.\n"); return(NULL) }
-  pr <- try(metafor::predict(fit, transf = mm$transf), silent = TRUE)
-  if (!inherits(pr, "try-error")) cat(sprintf("MV pooled: %s=%.3f (95%% CI %.3f–%.3f) | τ²=%.4f\n", mm$effect_label, pr$pred, pr$ci.lb, pr$ci.ub, fit$sigma2))
+  fit <- safe_try(
+    do.call(metafor::rma.mv, c(args, list(weights = data$analysis_weights))),
+    context = "multivariate meta-analysis with weights",
+    return_on_error = NULL,
+    warn = FALSE
+  )
+  if (is.null(fit)) {
+    fit <- safe_try(
+      do.call(metafor::rma.mv, args),
+      context = "multivariate meta-analysis without weights",
+      return_on_error = NULL
+    )
+  }
+  if (is.null(fit)) { cat("rma.mv failed.\n"); return(NULL) }
+  pr <- safe_predict(fit, transf = mm$transf, context = "MV meta-analysis")
+  if (!is.null(pr)) cat(sprintf("MV pooled: %s=%.3f (95%% CI %.3f–%.3f) | τ²=%.4f\n", mm$effect_label, pr$pred, pr$ci.lb, pr$ci.ub, fit$sigma2))
   else cat(sprintf("MV pooled: %s=%.3f (CI unavailable) | τ²=%.4f\n", mm$effect_label, mm$transf(coef(fit)), fit$sigma2))
   if (requireNamespace("clubSandwich", quietly = TRUE)) {
-    vc <- try(clubSandwich::vcovCR(fit, type = "CR2", cluster = data$study_id), silent = TRUE)
-    rob <- try(clubSandwich::coef_test(fit, vcov = vc, test = "Satterthwaite"), silent = TRUE)
-    if (!inherits(rob, "try-error")) {
+    vc <- safe_try(
+      clubSandwich::vcovCR(fit, type = "CR2", cluster = data$study_id),
+      context = "CR2 robust variance for MV meta-analysis",
+      return_on_error = NULL
+    )
+    rob <- safe_try(
+      clubSandwich::coef_test(fit, vcov = vc, test = "Satterthwaite"),
+      context = "robust coefficient test for MV meta-analysis",
+      return_on_error = NULL
+    )
+    if (!is.null(rob)) {
       est <- mm$transf(as.numeric(rob$beta)); lo <- mm$transf(as.numeric(rob$conf.low)); hi <- mm$transf(as.numeric(rob$conf.high))
       cat(sprintf("    ↳ MV-CR2: %s=%.3f (95%% CI %.3f–%.3f)\n", mm$effect_label, est, lo, hi))
     }
@@ -89,10 +108,14 @@ run_mv_meta_exact_logOR <- function(data, config) {
   V <- .build_V_exact_logOR(data)
   mm <- .cbamm_measure_meta("OR")
   args <- list(yi = data$yi, V = V, random = ~ 1 | study_id, test = if (config$use_hksj) "knha" else "z", method = config$mv_tau_estimator)
-  fit <- try(do.call(metafor::rma.mv, args), silent = TRUE)
-  if (inherits(fit, "try-error")) { cat("rma.mv exact-V failed.\n"); return(NULL) }
-  pr <- try(metafor::predict(fit, transf = mm$transf), silent = TRUE)
-  if (!inherits(pr, "try-error")) cat(sprintf("MV exact-V pooled: %s=%.3f (95%% CI %.3f–%.3f) | τ²=%.4f\n", mm$effect_label, pr$pred, pr$ci.lb, pr$ci.ub, fit$sigma2))
+  fit <- safe_try(
+    do.call(metafor::rma.mv, args),
+    context = "multivariate meta-analysis with exact log OR covariance",
+    return_on_error = NULL
+  )
+  if (is.null(fit)) { cat("rma.mv exact-V failed.\n"); return(NULL) }
+  pr <- safe_predict(fit, transf = mm$transf, context = "MV exact-V meta-analysis")
+  if (!is.null(pr)) cat(sprintf("MV exact-V pooled: %s=%.3f (95%% CI %.3f–%.3f) | τ²=%.4f\n", mm$effect_label, pr$pred, pr$ci.lb, pr$ci.ub, fit$sigma2))
   else cat(sprintf("MV exact-V pooled: %s=%.3f (CI unavailable) | τ²=%.4f\n", mm$effect_label, mm$transf(coef(fit)), fit$sigma2))
   invisible(fit)
 }
@@ -111,10 +134,15 @@ run_mv_rho_sensitivity <- function(data, config, rhos = NULL) {
   if (is.null(rhos)) rhos <- config$mv_rho_grid
   mm <- .cbamm_measure_meta(config$effect_measure)
   out <- purrr::map_dfr(rhos, function(rho) {
-    fit <- try(run_mv_meta(data, config, rho = rho), silent = TRUE)
-    if (inherits(fit, "try-error") || is.null(fit)) return(tibble::tibble(rho = rho, eff = NA_real_, lo = NA_real_, hi = NA_real_))
-    pr <- try(metafor::predict(fit, transf = mm$transf), silent = TRUE)
-    if (inherits(pr, "try-error")) tibble::tibble(rho = rho, eff = mm$transf(as.numeric(coef(fit))), lo = NA_real_, hi = NA_real_)
+    fit <- safe_try(
+      run_mv_meta(data, config, rho = rho),
+      context = paste("MV rho sensitivity with rho =", rho),
+      return_on_error = NULL,
+      warn = FALSE
+    )
+    if (is.null(fit)) return(tibble::tibble(rho = rho, eff = NA_real_, lo = NA_real_, hi = NA_real_))
+    pr <- safe_predict(fit, transf = mm$transf, context = paste("MV rho =", rho))
+    if (is.null(pr)) tibble::tibble(rho = rho, eff = mm$transf(as.numeric(coef(fit))), lo = NA_real_, hi = NA_real_)
     else tibble::tibble(rho = rho, eff = pr$pred, lo = pr$ci.lb, hi = pr$ci.ub)
   })
   print(out)

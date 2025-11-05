@@ -17,6 +17,9 @@
 #' @return Numeric vector of weights
 #' @export
 compute_transport_weights <- function(data, target_population, truncation = 0.02) {
+  # Input validation
+  validate_meta_data(data, required_cols = NULL)
+
   req <- c("age_mean", "female_pct", "bmi_mean", "charlson")
   miss <- setdiff(req, names(data))
   if (length(miss)) {
@@ -37,8 +40,12 @@ compute_transport_weights <- function(data, target_population, truncation = 0.02
       charlson=pmax(rnorm(M, target_population$charlson, 0.4), 0))
     pool <- dplyr::bind_rows(X |> dplyr::mutate(treat = 0L), tgt |> dplyr::mutate(treat = 1L))
     fml <- as.formula("treat ~ age_mean + female_pct + bmi_mean + charlson")
-    wobj <- try(WeightIt::weightit(fml, data = pool, method = "ebal"), silent = TRUE)
-    if (!inherits(wobj, "try-error")) {
+    wobj <- safe_try(
+      WeightIt::weightit(fml, data = pool, method = "ebal"),
+      context = "entropy balancing for transportability weights",
+      return_on_error = NULL
+    )
+    if (!is.null(wobj)) {
       w <- as.numeric(wobj$weights[pool$treat == 0]); w <- w / sum(w)
       if (truncation > 0) {
         lo <- stats::quantile(w, truncation)
@@ -46,7 +53,7 @@ compute_transport_weights <- function(data, target_population, truncation = 0.02
         w <- pmax(pmin(w, hi), lo); w <- w / sum(w)
       }
       if (requireNamespace("cobalt", quietly = TRUE))
-        suppressMessages(try(print(cobalt::bal.tab(wobj)), silent = TRUE))
+        suppressMessages(safe_try(print(cobalt::bal.tab(wobj)), context = "printing balance table", warn = FALSE))
       return(w)
     }
   }
@@ -57,8 +64,12 @@ compute_transport_weights <- function(data, target_population, truncation = 0.02
     w <- init * exp(eta); w <- as.numeric(w / sum(w))
     sum((colSums(as.matrix(X) * w) - target_moments)^2)
   }
-  opt <- try(stats::optim(par = rep(0, ncol(X)), fn = obj, control = list(maxit = 2000, reltol = 1e-10)), silent = TRUE)
-  if (!inherits(opt, "try-error")) {
+  opt <- safe_try(
+    stats::optim(par = rep(0, ncol(X)), fn = obj, control = list(maxit = 2000, reltol = 1e-10)),
+    context = "optimizing transportability weights",
+    return_on_error = NULL
+  )
+  if (!is.null(opt)) {
     w <- init * exp(as.matrix(X) %*% opt$par); w <- as.numeric(w / sum(w))
     if (truncation > 0) {
       lo <- stats::quantile(w, truncation)
@@ -120,14 +131,40 @@ robust_rma <- function(yi, sei, data = NULL, method = "REML",
     a
   }
   args <- build_args(FALSE)
-  fit <- try(do.call(metafor::rma.uni, args), silent = TRUE)
-  if (inherits(fit, "try-error")) { args$test <- NULL; fit <- try(do.call(metafor::rma.uni, args), silent = TRUE) }
-  if (inherits(fit, "try-error")) {
-    args2 <- build_args(TRUE)
-    fit <- try(do.call(metafor::rma.uni, args2), silent = TRUE)
-    if (inherits(fit, "try-error") && use_hksj) { args2$test <- NULL; fit <- try(do.call(metafor::rma.uni, args2), silent = TRUE) }
+  fit <- safe_try(
+    do.call(metafor::rma.uni, args),
+    context = "fitting meta-analysis model with sei",
+    return_on_error = NULL,
+    warn = FALSE
+  )
+  if (is.null(fit)) {
+    args$test <- NULL
+    fit <- safe_try(
+      do.call(metafor::rma.uni, args),
+      context = "fitting meta-analysis model without HKSJ",
+      return_on_error = NULL,
+      warn = FALSE
+    )
   }
-  if (inherits(fit, "try-error")) stop("Meta-analysis failed: ", as.character(fit))
+  if (is.null(fit)) {
+    args2 <- build_args(TRUE)
+    fit <- safe_try(
+      do.call(metafor::rma.uni, args2),
+      context = "fitting meta-analysis model with vi",
+      return_on_error = NULL,
+      warn = FALSE
+    )
+    if (is.null(fit) && use_hksj) {
+      args2$test <- NULL
+      fit <- safe_try(
+        do.call(metafor::rma.uni, args2),
+        context = "fitting meta-analysis model with vi without HKSJ",
+        return_on_error = NULL,
+        warn = FALSE
+      )
+    }
+  }
+  if (is.null(fit)) stop("Meta-analysis failed after trying multiple fallback strategies")
   fit
 }
 
@@ -137,8 +174,8 @@ report_meta_result <- function(result, label = "", include_pi = TRUE,
                                cluster_vec = NULL) {
   if (inherits(result, "try-error")) { cat(label, ": failed\n"); return(invisible(NULL)) }
   mm <- .cbamm_measure_meta(measure); tf <- mm$transf
-  pr <- try(metafor::predict(result, transf = tf), silent = TRUE)
-  if (!inherits(pr, "try-error")) {
+  pr <- safe_predict(result, transf = tf, context = label)
+  if (!is.null(pr)) {
     have_pi <- include_pi && !any(is.na(c(pr$pi.lb, pr$pi.ub)))
     if (have_pi) {
       cat(sprintf("%s: %s=%.3f (95%% CI %.3f–%.3f, PI %.3f–%.3f) | k=%d, τ²=%.4f, I²=%.1f%%\n",
@@ -156,9 +193,17 @@ report_meta_result <- function(result, label = "", include_pi = TRUE,
   }
 
   if (rve_primary && requireNamespace("clubSandwich", quietly = TRUE) && !is.null(cluster_vec)) {
-    vc <- try(clubSandwich::vcovCR(result, cluster = cluster_vec, type = "CR2"), silent = TRUE)
-    rob <- try(clubSandwich::coef_test(result, vcov = vc, test = "Satterthwaite"), silent = TRUE)
-    if (!inherits(rob, "try-error")) {
+    vc <- safe_try(
+      clubSandwich::vcovCR(result, cluster = cluster_vec, type = "CR2"),
+      context = "computing CR2 robust variance",
+      return_on_error = NULL
+    )
+    rob <- safe_try(
+      clubSandwich::coef_test(result, vcov = vc, test = "Satterthwaite"),
+      context = "computing robust coefficient test",
+      return_on_error = NULL
+    )
+    if (!is.null(rob)) {
       est <- tf(as.numeric(rob$beta)); lo <- tf(as.numeric(rob$conf.low)); hi <- tf(as.numeric(rob$conf.high)); df <- as.numeric(rob$df)
       cat(sprintf("    ↳ CR2 (primary): %s=%.3f (95%% CI %.3f–%.3f), df≈%.1f\n", mm$effect_label, est, lo, hi, df))
     }
@@ -180,6 +225,10 @@ report_meta_result <- function(result, label = "", include_pi = TRUE,
 #' @return Named vector with PET and PEESE intercepts
 #' @export
 pet_peese <- function(yi, sei) {
+  # Input validation
+  validate_meta_inputs(yi, vi = NULL, sei = sei)
+  validate_sample_size(length(yi), "meta-analysis", warning_only = TRUE)
+
   w <- 1 / (sei^2); df <- data.frame(yi = yi, sei = sei, w = w)
   fit_pet    <- lm(yi ~ sei, data = df, weights = w)
   fit_peese <- lm(yi ~ I(sei^2), data = df, weights = w)
@@ -189,10 +238,18 @@ pet_peese <- function(yi, sei) {
 #' @keywords internal
 rve_print <- function(res, cluster_vec, label="[RVE-CR2]") {
   if (!requireNamespace("clubSandwich", quietly = TRUE)) return(invisible(NULL))
-  vc <- try(clubSandwich::vcovCR(res, cluster = cluster_vec, type = "CR2"), silent = TRUE)
-  if (inherits(vc, "try-error")) return(invisible(NULL))
-  rob <- try(clubSandwich::coef_test(res, vcov = vc), silent = TRUE)
-  if (!inherits(rob, "try-error")) { cat(label, " robust test for ", deparse(substitute(res)), ":\n", sep=""); print(rob) }
+  vc <- safe_try(
+    clubSandwich::vcovCR(res, cluster = cluster_vec, type = "CR2"),
+    context = "computing CR2 robust variance for RVE",
+    return_on_error = NULL
+  )
+  if (is.null(vc)) return(invisible(NULL))
+  rob <- safe_try(
+    clubSandwich::coef_test(res, vcov = vc),
+    context = "computing robust coefficient test for RVE",
+    return_on_error = NULL
+  )
+  if (!is.null(rob)) { cat(label, " robust test for ", deparse(substitute(res)), ":\n", sep=""); print(rob) }
   invisible(rob)
 }
 

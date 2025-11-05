@@ -1,0 +1,27 @@
+File,Function Name,Line,Parameters,Critical Parameters,Validation Needed,Type
+clinical-decision-tools.R,cbamm_rmst_meta,237,"rmst1, rmst0, se1, se0, time_horizon",rmst1 + rmst0 + se1 + se0 + time_horizon,"rmst1: numeric_vector, positive | rmst0: numeric_vector, positive | se1: numeric_vector, positive | se0: numeric_vector, positive | time_horizon: numeric, positive",Numeric/Other
+clinical-decision-tools.R,cbamm_prob_best,319,"yi, vi, treatment_names, n_sim",yi + vi,"yi: numeric_vector, length>2, finite values | vi: numeric_vector, length>2, positive values",Effect size vectors
+clinical-decision.R,cbamm_fragility_index,24,"results, data, alpha, direction",data + direction,"data: data.frame, not empty",Data frame
+core-functions.R,compute_transport_weights,19,"data, target_population, truncation",data + target_population + truncation,"data: data.frame, not empty",Data frame
+core-functions.R,pet_peese,182,"yi, sei",yi + sei,"yi: numeric_vector, length>2, finite values | sei: numeric_vector, length>2, positive values",Effect size vectors
+effect-sizes.R,cbamm_calc_or,169,"ai, bi, ci, di, data, ...",ai + bi + ci + di + data,"ai: numeric, non-negative integer | bi: numeric, non-negative integer | ci: numeric, non-negative integer | di: numeric, non-negative integer | data: data.frame, not empty",Data frame
+effect-sizes.R,cbamm_calc_rr,176,"ai, bi, ci, di, data, ...",ai + bi + ci + di + data,"ai: numeric, non-negative integer | bi: numeric, non-negative integer | ci: numeric, non-negative integer | di: numeric, non-negative integer | data: data.frame, not empty",Data frame
+effect-sizes.R,cbamm_calc_rd,183,"ai, bi, ci, di, data, ...",ai + bi + ci + di + data,"ai: numeric, non-negative integer | bi: numeric, non-negative integer | ci: numeric, non-negative integer | di: numeric, non-negative integer | data: data.frame, not empty",Data frame
+effect-sizes.R,cbamm_calc_peto,190,"ai, bi, ci, di, data, ...",ai + bi + ci + di + data,"ai: numeric, non-negative integer | bi: numeric, non-negative integer | ci: numeric, non-negative integer | di: numeric, non-negative integer | data: data.frame, not empty",Data frame
+effect-sizes.R,cbamm_calc_md,197,"m1i, sd1i, n1i, m2i, sd2i, n2i, data, ...",m1i + sd1i + n1i + m2i + sd2i + n2i + data,"m1i: numeric | sd1i: numeric, positive | n1i: numeric, positive integer | m2i: numeric | sd2i: numeric, positive | n2i: numeric, positive integer | data: data.frame, not empty",Data frame
+effect-sizes.R,cbamm_calc_smd,206,"m1i, sd1i, n1i, m2i, sd2i, n2i, data, ...",m1i + sd1i + n1i + m2i + sd2i + n2i + data,"m1i: numeric | sd1i: numeric, positive | n1i: numeric, positive integer | m2i: numeric | sd2i: numeric, positive | n2i: numeric, positive integer | data: data.frame, not empty",Data frame
+effect-sizes.R,cbamm_calc_prop,215,"xi, mi, data, ...",xi + mi + data,"xi: numeric, non-negative integer | mi: numeric, positive integer | data: data.frame, not empty",Data frame
+effect-sizes.R,cbamm_calc_ir,221,"xi, ti, data, ...",xi + ti + data,"xi: numeric, non-negative integer | ti: numeric, positive | data: data.frame, not empty",Data frame
+effect-sizes.R,cbamm_calc_zcor,227,"ri, ni, data, ...",ri + ni + data,"ri: numeric, range [-1,1] | ni: numeric, positive integer | data: data.frame, not empty",Data frame
+heterogeneity-methods.R,cbamm_heterogeneity_bf,324,"yi, vi, prior_tau",yi + vi + prior_tau,"yi: numeric_vector, length>2, finite values | vi: numeric_vector, length>2, positive values",Effect size vectors
+heterogeneity-methods.R,cbamm_heterogeneity_decomp,518,"yi, vi, subgroups, method",yi + vi,"yi: numeric_vector, length>2, finite values | vi: numeric_vector, length>2, positive values",Effect size vectors
+model-selection.R,cbamm_lrt,361,"yi, vi, mods1, mods2, method",yi + vi,"yi: numeric_vector, length>2, finite values | vi: numeric_vector, length>2, positive values",Effect size vectors
+model-selection.R,cbamm_compare_fe_re,453,"yi, vi",yi + vi,"yi: numeric_vector, length>2, finite values | vi: numeric_vector, length>2, positive values",Effect size vectors
+sensitivity-analysis.R,cbamm_publication_bias_sensitivity,343,"yi, vi, methods",yi + vi,"yi: numeric_vector, length>2, finite values | vi: numeric_vector, length>2, positive values",Effect size vectors
+setup.R,initialize_cbamm,202,config,config,"config: list, valid configuration",Numeric/Other
+simulation.R,simulate_cbamm_binary,75,"n, measure, seed",seed,,Numeric/Other
+simulation.R,simulate_cbamm_continuous,107,"n, measure, seed",seed,,Numeric/Other
+small-study-effects.R,cbamm_egger_test,210,"yi, vi, method",yi + vi,"yi: numeric_vector, length>2, finite values | vi: numeric_vector, length>2, positive values",Effect size vectors
+small-study-effects.R,cbamm_begg_test,259,"yi, vi",yi + vi,"yi: numeric_vector, length>2, finite values | vi: numeric_vector, length>2, positive values",Effect size vectors
+small-study-effects.R,cbamm_pcurve,460,"yi, vi",yi + vi,"yi: numeric_vector, length>2, finite values | vi: numeric_vector, length>2, positive values",Effect size vectors
+tables.R,cbamm_make_summary_table,13,"results, data, config",data + config,"data: data.frame, not empty | config: list, valid configuration",Data frame

@@ -160,7 +160,7 @@ run_cbamm_analysis <- function(data, target_population = NULL, config = setup_cb
       EF
       "
       if (requireNamespace("patchwork", quietly = TRUE)) {
-         try(print(patchwork::wrap_plots(static_plots) + patchwork::plot_layout(design = layout)), silent = TRUE)
+         safe_try(print(patchwork::wrap_plots(static_plots) + patchwork::plot_layout(design = layout)), context = "printing patchwork combined layout", warn = FALSE)
       } else {
          message("[plot] patchwork not available, skipping combined layout.")
       }

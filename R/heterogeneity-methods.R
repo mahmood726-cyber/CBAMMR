@@ -323,6 +323,10 @@ plot.cbamm_heterogeneity <- function(x, ...) {
 #' }
 cbamm_heterogeneity_bf <- function(yi, vi, prior_tau = 0.5) {
 
+  # Input validation
+  validate_meta_inputs(yi, vi)
+  validate_sample_size(length(yi), "meta-analysis", warning_only = TRUE)
+
   # Fit homogeneous model (fixed effect)
   weights_fe <- 1 / vi
   estimate_fe <- sum(weights_fe * yi) / sum(weights_fe)
@@ -516,6 +520,10 @@ print.cbamm_metareg_r2 <- function(x, ...) {
 #' print(decomp)
 #' }
 cbamm_heterogeneity_decomp <- function(yi, vi, subgroups, method = "REML") {
+
+  # Input validation
+  validate_meta_inputs(yi, vi)
+  validate_sample_size(length(yi), "meta-analysis", warning_only = TRUE)
 
   if (!requireNamespace("metafor", quietly = TRUE)) {
     stop("Package 'metafor' is required")

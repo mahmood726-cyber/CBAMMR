@@ -14,7 +14,12 @@ run_adaptive_advisor <- function(data, pooled_results, config) {
   cat("\n=== ADAPTIVE ADVISOR ===\n")
   k <- nrow(data); dup <- any(duplicated(data$study_id))
   fit <- pooled_results$transport; I2 <- if (!is.null(fit)) fit$I2 else NA_real_
-  eg <- try(metafor::regtest(fit, model = "lm"), silent = TRUE); bias_flag <- (!inherits(eg, "try-error")) && is.finite(eg$pval) && eg$pval < 0.10
+  eg <- safe_try(
+    metafor::regtest(fit, model = "lm"),
+    context = "Egger regression test for publication bias",
+    return_on_error = NULL
+  )
+  bias_flag <- (!is.null(eg)) && is.finite(eg$pval) && eg$pval < 0.10
   rec <- c()
   if (k < 5) rec <- c(rec, "Fixed-effects is defensible (very small k); otherwise keep REML+HKSJ.") else rec <- c(rec, "Random-effects (REML+HKSJ) appropriate.")
   if (is.finite(I2) && I2 > 75) rec <- c(rec, "High heterogeneity: inspect moderators/time trends.")
@@ -22,10 +27,10 @@ run_adaptive_advisor <- function(data, pooled_results, config) {
   if (bias_flag) rec <- c(rec, "Funnel asymmetry: report PET–PEESE, selection-models, RoBMA/p-uniform*.")
   if (all(c("age_mean","female_pct","bmi_mean","charlson") %in% names(data))) rec <- c(rec, "Covariates present: keep transport weighting.")
   cat(sprintf("k = %d, I² ≈ %s%%\n", k, ifelse(is.finite(I2), sprintf("%.1f", I2), "NA")))
-  if (!inherits(eg, "try-error")) cat(sprintf("Egger test (lm) p = %.3f\n", eg$pval))
+  if (!is.null(eg)) cat(sprintf("Egger test (lm) p = %.3f\n", eg$pval))
   cat("Inference: ", if (config$use_hksj) "HKSJ (Knapp–Hartung)" else "Wald z", "\n", sep = "")
   cat("Recommendations:\n"); for (r in rec) cat(" - ", r, "\n", sep="")
-  invisible(list(k = k, I2 = I2, egger_p = ifelse(inherits(eg,"try-error"), NA, eg$pval), rec = rec))
+  invisible(list(k = k, I2 = I2, egger_p = ifelse(is.null(eg), NA, eg$pval), rec = rec))
 }
 
 #' Run Stratified Meta-Analysis
@@ -44,8 +49,12 @@ run_stratified_analysis <- function(data, config) {
     d <- dplyr::filter(data, study_type == type)
     if (nrow(d) < 3) { cat(sprintf("%-8s: insufficient studies (n=%d)\n", type, nrow(d))); res[[type]] <- NULL; next }
     w <- d$analysis_weights
-    fit <- try(robust_rma(d$yi, d$se, data = d, method = "REML", weights = w, use_hksj = config$use_hksj), silent = TRUE)
-    if (!inherits(fit, "try-error")) {
+    fit <- safe_try(
+      robust_rma(d$yi, d$se, data = d, method = "REML", weights = w, use_hksj = config$use_hksj),
+      context = paste("stratified meta-analysis for", type),
+      return_on_error = NULL
+    )
+    if (!is.null(fit)) {
       report_meta_result(fit, sprintf("%-8s", type), include_pi = TRUE, measure = config$effect_measure,
                          rve_primary = config$use_rve_as_primary, cluster_vec = d$study_id)
       res[[type]] <- fit
@@ -105,10 +114,15 @@ run_multiverse_analysis <- function(data, config) {
                                "All_types" = data)
     if (nrow(dd) < 3) return(tibble::tibble(specification=i, success=FALSE, eff=NA_real_, ci_lb=NA_real_, ci_ub=NA_real_, tau2=NA_real_, i2=NA_real_))
     w <- if (spec$weighting == "grade_adjusted" && "analysis_weights_grade" %in% names(dd)) dd$analysis_weights_grade else dd$analysis_weights
-    fit <- try(robust_rma(dd$yi, dd$se, data=dd, method = spec$estimator, weights=w, use_hksj=config$use_hksj), silent=TRUE)
-    if (inherits(fit, "try-error")) return(tibble::tibble(specification=i, success=FALSE, eff=NA_real_, ci_lb=NA_real_, ci_ub=NA_real_, tau2=NA_real_, i2=NA_real_))
-    pr <- try(metafor::predict(fit, transf=mm$transf), silent=TRUE)
-    if (inherits(pr, "try-error")) tibble::tibble(specification=i, success=TRUE, eff=as.numeric(mm$transf(as.numeric(coef(fit)))), ci_lb=NA_real_, ci_ub=NA_real_, tau2=as.numeric(fit$tau2), i2=as.numeric(fit$I2))
+    fit <- safe_try(
+      robust_rma(dd$yi, dd$se, data=dd, method = spec$estimator, weights=w, use_hksj=config$use_hksj),
+      context = paste("multiverse specification", i),
+      return_on_error = NULL,
+      warn = FALSE
+    )
+    if (is.null(fit)) return(tibble::tibble(specification=i, success=FALSE, eff=NA_real_, ci_lb=NA_real_, ci_ub=NA_real_, tau2=NA_real_, i2=NA_real_))
+    pr <- safe_predict(fit, transf=mm$transf, context = paste("multiverse specification", i))
+    if (is.null(pr)) tibble::tibble(specification=i, success=TRUE, eff=as.numeric(mm$transf(as.numeric(coef(fit)))), ci_lb=NA_real_, ci_ub=NA_real_, tau2=as.numeric(fit$tau2), i2=as.numeric(fit$I2))
     else tibble::tibble(specification=i, success=TRUE, eff=as.numeric(pr$pred), ci_lb=as.numeric(pr$ci.lb), ci_ub=as.numeric(pr$ci.ub), tau2=as.numeric(fit$tau2), i2=as.numeric(fit$I2))
   })
   out <- dplyr::left_join(out, dplyr::mutate(grid, specification=dplyr::row_number()), by="specification")

@@ -18,10 +18,37 @@ run_bayesian_analysis <- function(data, config, features) {
     bayes_data <- data %>% dplyr::mutate(study_type_fct = factor(study_type, levels=c("RCT","OBS","MR")), grade_numeric  = as.numeric(grade), w = w_ext)
     priors1 <- if (!is.null(config$bayes_priors)) config$bayes_priors else c(brms::prior(normal(0, 0.3), class = Intercept), brms::prior(normal(0, 0.2), class = b), brms::prior(student_t(3, 0, 0.3), class = sd))
     priors2 <- if (!is.null(config$bayes_priors_alt)) config$bayes_priors_alt else c(brms::prior(normal(0, 0.5), class = Intercept), brms::prior(normal(0, 0.3), class = b), brms::prior(student_t(3, 0, 0.5), class = sd))
-    m1 <- try(brms::brm(yi | se(se) ~ 1 + study_type_fct + grade_numeric + (1|study_id), data = bayes_data, family = gaussian(), prior = priors1, chains = config$bayes_chains, iter = config$bayes_iter, warmup = config$bayes_warmup, cores = config$n_cores, control = list(adapt_delta=0.98), seed = 1001, weights = w, save_pars = brms::save_pars(all = TRUE)), silent = TRUE)
-    m2 <- try(brms::brm(yi | se(se) ~ 1 + study_type_fct + grade_numeric + (1|study_id), data = bayes_data, family = gaussian(), prior = priors2, chains = config$bayes_chains, iter = config$bayes_iter, warmup = config$bayes_warmup, cores = config$n_cores, control = list(adapt_delta=0.98), seed = 1002, weights = w, save_pars = brms::save_pars(all = TRUE)), silent = TRUE)
-    fits <- list(); if (!inherits(m1,"try-error")) { fits$cons <- m1; rhats <- try(brms::rhat(m1), silent = TRUE); if (!inherits(rhats,"try-error") && any(rhats > 1.05, na.rm=TRUE)) warning("High R-hat in brms model 1.") }
-    if (!inherits(m2,"try-error")) { fits$mod  <- m2; rhats <- try(brms::rhat(m2), silent = TRUE); if (!inherits(rhats,"try-error") && any(rhats > 1.05, na.rm=TRUE)) warning("High R-hat in brms model 2.") }
+    m1 <- safe_try(
+      brms::brm(yi | se(se) ~ 1 + study_type_fct + grade_numeric + (1|study_id),
+                data = bayes_data, family = gaussian(), prior = priors1,
+                chains = config$bayes_chains, iter = config$bayes_iter,
+                warmup = config$bayes_warmup, cores = config$n_cores,
+                control = list(adapt_delta=0.98), seed = 1001, weights = w,
+                save_pars = brms::save_pars(all = TRUE)),
+      context = "brms model 1 (conservative priors)",
+      return_on_error = NULL
+    )
+    m2 <- safe_try(
+      brms::brm(yi | se(se) ~ 1 + study_type_fct + grade_numeric + (1|study_id),
+                data = bayes_data, family = gaussian(), prior = priors2,
+                chains = config$bayes_chains, iter = config$bayes_iter,
+                warmup = config$bayes_warmup, cores = config$n_cores,
+                control = list(adapt_delta=0.98), seed = 1002, weights = w,
+                save_pars = brms::save_pars(all = TRUE)),
+      context = "brms model 2 (moderate priors)",
+      return_on_error = NULL
+    )
+    fits <- list()
+    if (!is.null(m1)) {
+      fits$cons <- m1
+      rhats <- safe_try(brms::rhat(m1), context = "checking R-hat for brms model 1", return_on_error = NULL, warn = FALSE)
+      if (!is.null(rhats) && any(rhats > 1.05, na.rm=TRUE)) warning("High R-hat in brms model 1.")
+    }
+    if (!is.null(m2)) {
+      fits$mod <- m2
+      rhats <- safe_try(brms::rhat(m2), context = "checking R-hat for brms model 2", return_on_error = NULL, warn = FALSE)
+      if (!is.null(rhats) && any(rhats > 1.05, na.rm=TRUE)) warning("High R-hat in brms model 2.")
+    }
     if (length(fits)) {
       llist <- lapply(fits, function(f) loo::loo(f, pointwise=TRUE))
       if (length(llist) > 1 && all(sapply(llist, function(x) inherits(x, "loo")))) sw <- loo::loo_model_weights(llist, method="stacking") else { sw <- rep(1/length(fits), length(fits)); names(sw) <- names(fits) }
@@ -57,8 +84,23 @@ run_bayesian_analysis <- function(data, config, features) {
   jm <- rjags::jags.model(textConnection(model_string), data = jdat, n.chains = config$bayes_chains, quiet = TRUE)
   update(jm, config$bayes_warmup, progress.bar="none")
   sm <- rjags::coda.samples(jm, c("mu","b_obs","b_mr","b_grade","sigma_u"), n.iter = max(1, config$bayes_iter - config$bayes_warmup), thin = 2, progress.bar="none")
-  draws <- try(as.matrix(sm), silent = TRUE); if (inherits(draws, "try-error")) draws <- try(coda::as.matrix.mcmc.list(sm), silent = TRUE)
-  if (inherits(draws, "try-error")) { warning("Could not convert JAGS samples to matrix; skipping Bayesian plot.") ; return(list(engine="jags", draws_mu=NULL, summary=NULL)) }
+  draws <- safe_try(
+    as.matrix(sm),
+    context = "converting JAGS samples to matrix",
+    return_on_error = NULL,
+    warn = FALSE
+  )
+  if (is.null(draws)) {
+    draws <- safe_try(
+      coda::as.matrix.mcmc.list(sm),
+      context = "converting JAGS samples to matrix (coda method)",
+      return_on_error = NULL
+    )
+  }
+  if (is.null(draws)) {
+    warning("Could not convert JAGS samples to matrix; skipping Bayesian plot.")
+    return(list(engine="jags", draws_mu=NULL, summary=NULL))
+  }
   eff <- exp(draws[,"mu"])
   cat(sprintf("Bayesian (JAGS) baseline %s: %.3f (95%% CrI %.3f–%.3f)\n", .cbamm_measure_meta(config$effect_measure)$effect_label, median(eff), quantile(eff,0.025), quantile(eff,0.975)))
   list(engine="jags", draws_mu=draws[,"mu"], summary=list(median=median(eff), cri=c(quantile(eff,c(.025,.975)))))

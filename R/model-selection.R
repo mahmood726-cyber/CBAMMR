@@ -360,6 +360,10 @@ print.cbamm_cv <- function(x, ...) {
 #' }
 cbamm_lrt <- function(yi, vi, mods1, mods2 = NULL, method = "ML") {
 
+  # Input validation
+  validate_meta_inputs(yi, vi)
+  validate_sample_size(length(yi), "meta-analysis", warning_only = TRUE)
+
   if (!requireNamespace("metafor", quietly = TRUE)) {
     stop("Package 'metafor' is required")
   }
@@ -451,6 +455,10 @@ print.cbamm_lrt <- function(x, ...) {
 #' print(result)
 #' }
 cbamm_compare_fe_re <- function(yi, vi) {
+
+  # Input validation
+  validate_meta_inputs(yi, vi)
+  validate_sample_size(length(yi), "meta-analysis", warning_only = TRUE)
 
   if (!requireNamespace("metafor", quietly = TRUE)) {
     stop("Package 'metafor' is required")

@@ -236,7 +236,23 @@ Treatment should be considered for patients with probability of benefit exceedin
 #' @export
 cbamm_rmst_meta <- function(rmst1, rmst0, se1, se0, time_horizon) {
 
-  require(metafor)
+  # Input validation
+  if (!is.numeric(rmst1) || !is.numeric(rmst0) || !is.numeric(se1) || !is.numeric(se0)) {
+    stop("rmst1, rmst0, se1, and se0 must be numeric vectors")
+  }
+  if (any(rmst1 <= 0, na.rm = TRUE) || any(rmst0 <= 0, na.rm = TRUE)) {
+    stop("RMST values (rmst1, rmst0) must be positive")
+  }
+  if (any(se1 <= 0, na.rm = TRUE) || any(se0 <= 0, na.rm = TRUE)) {
+    stop("Standard errors (se1, se0) must be positive")
+  }
+  if (!is.numeric(time_horizon) || length(time_horizon) != 1 || time_horizon <= 0) {
+    stop("time_horizon must be a positive numeric value")
+  }
+  validate_sample_size(length(rmst1), "meta-analysis", warning_only = TRUE)
+
+  # Check package availability
+  check_package_available("metafor", "cbamm_rmst_meta")
 
   # RMST differences
   rmst_diff <- rmst1 - rmst0
@@ -245,7 +261,7 @@ cbamm_rmst_meta <- function(rmst1, rmst0, se1, se0, time_horizon) {
   var_diff <- se1^2 + se0^2
 
   # Meta-analysis of RMST differences
-  fit <- rma(yi = rmst_diff, vi = var_diff, method = "REML")
+  fit <- metafor::rma(yi = rmst_diff, vi = var_diff, method = "REML")
 
   # Results
   pooled_diff <- fit$beta[1]
@@ -317,6 +333,10 @@ This suggests potential harm.", abs(diff), horizon)
 #'
 #' @export
 cbamm_prob_best <- function(yi, vi, treatment_names = NULL, n_sim = 10000) {
+
+  # Input validation
+  validate_meta_inputs(yi, vi)
+  validate_sample_size(length(yi), "meta-analysis", warning_only = TRUE)
 
   # Convert to vectors if lists
   if (is.list(yi)) yi <- unlist(yi)

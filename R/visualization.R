@@ -57,8 +57,13 @@
 .create_pet_plot <- function(data) {
   if (nrow(data) < 6) return(NULL)
   df_pp <- data.frame(yi = data$yi, se = data$se, w = 1/(data$se^2))
-  fit_pet <- try(lm(yi ~ se, data = df_pp, weights = w), silent = TRUE)
-  if (inherits(fit_pet, "try-error")) return(NULL)
+  fit_pet <- safe_try(
+    lm(yi ~ se, data = df_pp, weights = w),
+    context = "PET plot regression",
+    return_on_error = NULL,
+    warn = FALSE
+  )
+  if (is.null(fit_pet)) return(NULL)
   ggplot(df_pp, aes(x = se, y = yi)) +
     geom_point(alpha = 0.6) + geom_smooth(method = "lm", se = TRUE, formula = y ~ x) +
     geom_hline(yintercept = 0, linetype = "dotted") +
@@ -71,8 +76,13 @@
 .create_peese_plot <- function(data) {
   if (nrow(data) < 6) return(NULL)
   df_pp <- data.frame(yi = data$yi, se = data$se, w = 1/(data$se^2))
-  fit <- try(lm(yi ~ I(se^2), data = df_pp, weights = w), silent = TRUE)
-  if (inherits(fit, "try-error")) return(NULL)
+  fit <- safe_try(
+    lm(yi ~ I(se^2), data = df_pp, weights = w),
+    context = "PEESE plot regression",
+    return_on_error = NULL,
+    warn = FALSE
+  )
+  if (is.null(fit)) return(NULL)
   ggplot(df_pp, aes(x = se^2, y = yi)) +
     geom_point(alpha = 0.6) + geom_smooth(method = "lm", se = TRUE, formula = y ~ x) +
     geom_hline(yintercept = 0, linetype = "dotted") +
@@ -84,7 +94,13 @@
 #' @keywords internal
 .create_leave1out_plot <- function(pooled_results) {
   fit <- pooled_results$transport; if (is.null(fit) || inherits(fit, "try-error")) return(NULL)
-  loo <- try(metafor::leave1out(fit), silent = TRUE); if (inherits(loo, "try-error")) return(NULL)
+  loo <- safe_try(
+    metafor::leave1out(fit),
+    context = "leave-one-out analysis for plot",
+    return_on_error = NULL,
+    warn = FALSE
+  )
+  if (is.null(loo)) return(NULL)
   df_loo <- as.data.frame(loo); df_loo$eff <- exp(df_loo$estimate)
   df_loo$ci_lb <- if ("ci.lb" %in% names(df_loo)) exp(df_loo$ci.lb) else NA_real_
   df_loo$ci_ub <- if ("ci.ub" %in% names(df_loo)) exp(df_loo$ci.ub) else NA_real_
@@ -102,8 +118,13 @@
   fit <- pooled_results$transport
   if (is.null(fit) || inherits(fit, "try-error") || !"year" %in% names(data)) return(NULL)
   ord <- order(data$year, decreasing = FALSE)
-  cum  <- try(metafor::cumul(fit, order = ord), silent = TRUE)
-  if (inherits(cum, "try-error")) return(NULL)
+  cum <- safe_try(
+    metafor::cumul(fit, order = ord),
+    context = "cumulative meta-analysis for plot",
+    return_on_error = NULL,
+    warn = FALSE
+  )
+  if (is.null(cum)) return(NULL)
   dcc <- as.data.frame(cum); dcc$k <- seq_len(nrow(dcc))
   ggplot(dcc, aes(x = k, y = exp(estimate))) +
     geom_ribbon(aes(ymin = exp(ci.lb), ymax = exp(ci.ub)), alpha = 0.15) +
@@ -141,7 +162,13 @@
 #' @keywords internal
 .create_influence_plot <- function(inf_res) {
   if (is.null(inf_res) || is.null(inf_res$inf)) return(NULL)
-  cd <- try(as.numeric(inf_res$inf$infmat[,"cook.d"]), silent = TRUE); if (inherits(cd, "try-error") || all(is.na(cd))) return(NULL)
+  cd <- safe_try(
+    as.numeric(inf_res$inf$infmat[,"cook.d"]),
+    context = "extracting Cook's distance for influence plot",
+    return_on_error = NULL,
+    warn = FALSE
+  )
+  if (is.null(cd) || all(is.na(cd))) return(NULL)
   df <- data.frame(study = seq_along(cd), cooks_d = cd)
   ggplot(df, aes(x = reorder(as.character(study), cooks_d), y = cooks_d)) +
     geom_col() + coord_flip() + labs(title = "Influence (Cook's D)", x = "Study index", y = "Cook's D") + theme_minimal()
@@ -184,22 +211,22 @@
 #' @keywords internal
 create_result_plots <- function(results, data, config) {
   plots <- list(); add_plot <- function(lst, key, obj) { if (!is.null(obj)) lst[[key]] <- obj; lst }
-  if (!is.null(results$multiverse)) plots <- add_plot(plots, "multiverse", try(.create_multiverse_plot(results$multiverse, config), silent = TRUE) |> (\(x) if (inherits(x,"try-error")) NULL else x)())
+  if (!is.null(results$multiverse)) plots <- add_plot(plots, "multiverse", safe_try(.create_multiverse_plot(results$multiverse, config), context = "multiverse plot", warn = FALSE))
   if (!is.null(data)) {
-    plots <- add_plot(plots, "forest", try(.create_forest_plot(data, config), silent = TRUE) |> (\(x) if (inherits(x,"try-error")) NULL else x)())
-    plots <- add_plot(plots, "pet",    try(.create_pet_plot(data), silent = TRUE) |> (\(x) if (inherits(x,"try-error")) NULL else x)())
-    plots <- add_plot(plots, "peese",  try(.create_peese_plot(data), silent = TRUE) |> (\(x) if (inherits(x,"try-error")) NULL else x)())
+    plots <- add_plot(plots, "forest", safe_try(.create_forest_plot(data, config), context = "forest plot", warn = FALSE))
+    plots <- add_plot(plots, "pet", safe_try(.create_pet_plot(data), context = "PET plot", warn = FALSE))
+    plots <- add_plot(plots, "peese", safe_try(.create_peese_plot(data), context = "PEESE plot", warn = FALSE))
   }
   if (!is.null(results$pooled)) {
-    plots <- add_plot(plots, "funnel", try(.create_funnel_plot(results$pooled, config), silent = TRUE) |> (\(x) if (inherits(x,"try-error")) NULL else x)())
-    plots <- add_plot(plots, "leave1out", try(.create_leave1out_plot(results$pooled), silent = TRUE) |> (\(x) if (inherits(x,"try-error")) NULL else x)())
-    plots <- add_plot(plots, "cumulative", try(.create_cumulative_plot(results$pooled, data), silent = TRUE) |> (\(x) if (inherits(x,"try-error")) NULL else x)())
+    plots <- add_plot(plots, "funnel", safe_try(.create_funnel_plot(results$pooled, config), context = "funnel plot", warn = FALSE))
+    plots <- add_plot(plots, "leave1out", safe_try(.create_leave1out_plot(results$pooled), context = "leave-one-out plot", warn = FALSE))
+    plots <- add_plot(plots, "cumulative", safe_try(.create_cumulative_plot(results$pooled, data), context = "cumulative plot", warn = FALSE))
   }
-  if (!is.null(results$bayesian)) plots <- add_plot(plots, "bayesian_posterior", try(.create_bayesian_plot(results$bayesian), silent = TRUE) |> (\(x) if (inherits(x,"try-error")) NULL else x)())
-  if (!is.null(results$mv_rho)) plots <- add_plot(plots, "mv_rho_sensitivity", try(.create_rho_sensitivity_plot(results$mv_rho, config), silent = TRUE) |> (\(x) if (inherits(x,"try-error")) NULL else x)())
-  if (!is.null(results$influence)) plots <- add_plot(plots, "influence", try(.create_influence_plot(results$influence), silent = TRUE) |> (\(x) if (inherits(x,"try-error")) NULL else x)())
-  if (!is.null(results$pcurve)) plots <- add_plot(plots, "pcurve", try(.create_pcurve_plot(results$pcurve), silent = TRUE) |> (\(x) if (inherits(x,"try-error")) NULL else x)())
-  if (!is.null(results$meta_regression)) plots <- add_plot(plots, "meta_regression", try(.create_meta_regression_plot(results$meta_regression, config), silent = TRUE) |> (\(x) if (inherits(x,"try-error")) NULL else x)())
+  if (!is.null(results$bayesian)) plots <- add_plot(plots, "bayesian_posterior", safe_try(.create_bayesian_plot(results$bayesian), context = "Bayesian posterior plot", warn = FALSE))
+  if (!is.null(results$mv_rho)) plots <- add_plot(plots, "mv_rho_sensitivity", safe_try(.create_rho_sensitivity_plot(results$mv_rho, config), context = "MV rho sensitivity plot", warn = FALSE))
+  if (!is.null(results$influence)) plots <- add_plot(plots, "influence", safe_try(.create_influence_plot(results$influence), context = "influence plot", warn = FALSE))
+  if (!is.null(results$pcurve)) plots <- add_plot(plots, "pcurve", safe_try(.create_pcurve_plot(results$pcurve), context = "p-curve plot", warn = FALSE))
+  if (!is.null(results$meta_regression)) plots <- add_plot(plots, "meta_regression", safe_try(.create_meta_regression_plot(results$meta_regression, config), context = "meta-regression plot", warn = FALSE))
   plots
 }
 
@@ -224,18 +251,18 @@ cbamm_show_all_plots <- function(out,
   plots <- out$results$plots
   if (!dir.exists(save_dir)) dir.create(save_dir, recursive = TRUE)
   cat("\n[CBAMM] Printing plots one-by-one to the current device...\n")
-  for (nm in names(plots)) { cat(sprintf(" -> %s\n", nm)); p <- plots[[nm]]; try(print(p), silent = TRUE) }
+  for (nm in names(plots)) { cat(sprintf(" -> %s\n", nm)); p <- plots[[nm]]; safe_try(print(p), context = paste("printing", nm, "plot"), warn = FALSE) }
   pdf_path <- file.path(save_dir, pdf_file)
   cat(sprintf("\n[CBAMM] Writing all plots to a multipage PDF: %s\n", pdf_path))
-  grDevices::pdf(pdf_path, width = width, height = height); on.exit(try(grDevices::dev.off(), silent = TRUE), add = TRUE)
-  for (nm in names(plots)) { p <- plots[[nm]]; try(print(p), silent = TRUE) }
-  try(grDevices::dev.off(), silent = TRUE)
+  grDevices::pdf(pdf_path, width = width, height = height); on.exit(safe_try(grDevices::dev.off(), context = "closing PDF device", warn = FALSE), add = TRUE)
+  for (nm in names(plots)) { p <- plots[[nm]]; safe_try(print(p), context = paste("printing", nm, "to PDF"), warn = FALSE) }
+  safe_try(grDevices::dev.off(), context = "closing PDF device", warn = FALSE)
   cat("[CBAMM] Saving individual PNGs in:", normalizePath(save_dir, winslash = "/", mustWork = FALSE), "\n")
   for (nm in names(plots)) {
     p <- plots[[nm]]; fn <- file.path(save_dir, paste0("plot_", nm, ".png"))
-    if (inherits(p, "ggplot")) try(ggplot2::ggsave(filename = fn, plot = p, width = width, height = height, dpi = dpi, units = "in"), silent = TRUE)
+    if (inherits(p, "ggplot")) safe_try(ggplot2::ggsave(filename = fn, plot = p, width = width, height = height, dpi = dpi, units = "in"), context = paste("saving", nm, "as PNG"), warn = FALSE)
     else if (inherits(p, "plotly")) message(sprintf("[plotly] Skipping PNG export for '%s' (requires webshot/Chromote).", nm))
-    else try({ grDevices::png(fn, width = width, height = height, units = "in", res = dpi); print(p); grDevices::dev.off() }, silent = TRUE)
+    else safe_try({ grDevices::png(fn, width = width, height = height, units = "in", res = dpi); print(p); grDevices::dev.off() }, context = paste("saving", nm, "as PNG"), warn = FALSE)
   }
   cat("\n[CBAMM] Done. Open the PDF above if you still don't see figures.\n")
   invisible(list(pdf = pdf_path, dir = save_dir))

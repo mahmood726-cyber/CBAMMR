@@ -23,13 +23,21 @@
 run_publication_bias_sensitivity <- function(data) {
   cat("\n=== PUBLICATION-BIAS SENSITIVITY ===\n")
   out <- list()
-  tf <- try(metafor::trimfill(metafor::rma(yi = data$yi, sei = data$se, method = "REML")), silent = TRUE)
-  if (!inherits(tf, "try-error")) { cat("Trim-and-fill estimated missing studies: ", tf$k0, "\n", sep = ""); out$trimfill <- tf } else cat("Trim-and-fill unavailable or failed.\n")
+  tf <- safe_try(
+    metafor::trimfill(metafor::rma(yi = data$yi, sei = data$se, method = "REML")),
+    context = "trim-and-fill analysis for publication bias",
+    return_on_error = NULL
+  )
+  if (!is.null(tf)) { cat("Trim-and-fill estimated missing studies: ", tf$k0, "\n", sep = ""); out$trimfill <- tf } else cat("Trim-and-fill unavailable or failed.\n")
 
   if (requireNamespace("weightr", quietly = TRUE)) {
     pvals <- 2 * pnorm(-abs(data$yi / data$se)); br <- .cbamm_build_weightr_breaks(pvals)
-    sm <- try(weightr::weightfunct(effect = data$yi, v = data$se^2, steps = br, table = FALSE), silent = TRUE)
-    if (!inherits(sm, "try-error")) { cat("Selection model (weightr) fitted with breaks: ", paste(br, collapse = ", "), "\n", sep = ""); out$selection_model <- sm }
+    sm <- safe_try(
+      weightr::weightfunct(effect = data$yi, v = data$se^2, steps = br, table = FALSE),
+      context = "selection model with weightr",
+      return_on_error = NULL
+    )
+    if (!is.null(sm)) { cat("Selection model (weightr) fitted with breaks: ", paste(br, collapse = ", "), "\n", sep = ""); out$selection_model <- sm }
     else cat("Selection model failed. Proceeding.\n")
   } else cat("Selection model skipped (weightr not available).\n")
   invisible(out)
@@ -44,13 +52,26 @@ run_publication_bias_sensitivity <- function(data) {
 run_robma <- function(data) {
   if (!requireNamespace("RoBMA", quietly = TRUE)) { cat("\n=== RoBMA ===\nSkipped (RoBMA not available)\n"); return(NULL) }
   cat("\n=== RoBMA (Robust Bayesian Model Averaging for pub-bias) ===\n")
-  fit <- try(RoBMA::RoBMA(y = data$yi, se = data$se), silent = TRUE)
-  if (inherits(fit, "try-error")) { cat("RoBMA failed.\n"); return(NULL) }
-  summ <- try(capture.output(summary(fit)), silent = TRUE)
-  if (!inherits(summ, "try-error")) cat(paste0(summ, collapse = "\n"), "\n")
-  eff <- try(RoBMA::coef(fit), silent = TRUE)
+  fit <- safe_try(
+    RoBMA::RoBMA(y = data$yi, se = data$se),
+    context = "RoBMA model averaging for publication bias",
+    return_on_error = NULL
+  )
+  if (is.null(fit)) { cat("RoBMA failed.\n"); return(NULL) }
+  summ <- safe_try(
+    capture.output(summary(fit)),
+    context = "capturing RoBMA summary output",
+    return_on_error = NULL,
+    warn = FALSE
+  )
+  if (!is.null(summ)) cat(paste0(summ, collapse = "\n"), "\n")
+  eff <- safe_try(
+    RoBMA::coef(fit),
+    context = "extracting RoBMA coefficients",
+    return_on_error = NULL
+  )
   res <- list(fit = fit, coef = eff)
-  if (!inherits(eff, "try-error")) {
+  if (!is.null(eff)) {
     if ("mu" %in% rownames(eff)) {
       mu <- eff["mu", , drop=FALSE]
       if (all(c("Median","2.5%","97.5%") %in% colnames(mu))) {
@@ -75,7 +96,11 @@ run_puniform <- function(data) {
   p2 <- 2 * pnorm(-abs(z))
   sig <- p2[p2 < 0.05 & is.finite(p2)]
   if (length(sig) < 5) { cat("Too few significant p-values (<5); skipping p-uniform*.\n"); return(NULL) }
-  fit <- try(puniform::puniform(yi = data$yi, vi = data$se^2, side = "two.sided", method = "P"), silent = TRUE)
-  if (inherits(fit, "try-error")) { cat("p-uniform* failed.\n"); return(NULL) }
+  fit <- safe_try(
+    puniform::puniform(yi = data$yi, vi = data$se^2, side = "two.sided", method = "P"),
+    context = "p-uniform* analysis for publication bias",
+    return_on_error = NULL
+  )
+  if (is.null(fit)) { cat("p-uniform* failed.\n"); return(NULL) }
   print(fit); invisible(fit)
 }

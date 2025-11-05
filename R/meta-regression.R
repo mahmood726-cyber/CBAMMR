@@ -14,12 +14,21 @@ run_meta_regression_ns <- function(data, config) {
   if (nrow(data) < 6) { cat("\n=== META-REGRESSION (NS) ===\nSkipped (k<6)\n"); return(NULL) }
   cat("\n=== META-REGRESSION (NS on year; df=", config$meta_regression_df, ") ===\n", sep="")
   df <- config$meta_regression_df; mods <- ~ ns(year, df = df)
-  fit <- try(robust_rma(data$yi, data$se, data = data, method = "REML", weights = data$analysis_weights, mods = mods, use_hksj = config$use_hksj), silent = TRUE)
-  if (inherits(fit, "try-error")) { cat("meta-regression failed.\n"); return(NULL) }
+  fit <- safe_try(
+    robust_rma(data$yi, data$se, data = data, method = "REML",
+               weights = data$analysis_weights, mods = mods, use_hksj = config$use_hksj),
+    context = "meta-regression with natural splines on year",
+    return_on_error = NULL
+  )
+  if (is.null(fit)) { cat("meta-regression failed.\n"); return(NULL) }
   yr_seq <- seq(min(data$year, na.rm=TRUE), max(data$year, na.rm=TRUE), by = 1)
   newdat <- data.frame(year = yr_seq)
-  pr <- try(predict(fit, newmods = model.matrix(~ ns(year, df = df), data = newdat), transf = .cbamm_measure_meta(config$effect_measure)$transf), silent = TRUE)
-  if (inherits(pr,"try-error")) pr <- NULL
+  pr <- safe_try(
+    predict(fit, newmods = model.matrix(~ ns(year, df = df), data = newdat),
+            transf = .cbamm_measure_meta(config$effect_measure)$transf),
+    context = "predicting meta-regression trend over years",
+    return_on_error = NULL
+  )
   invisible(list(fit = fit, preds = if (!is.null(pr)) data.frame(year = yr_seq, fit = pr$pred, lo = pr$ci.lb, hi = pr$ci.ub) else NULL))
 }
 

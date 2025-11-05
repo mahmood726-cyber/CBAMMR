@@ -167,6 +167,11 @@ NULL
 #' @describeIn quick-escalc Calculate Odds Ratio (log scale)
 #' @export
 cbamm_calc_or <- function(ai, bi, ci, di, data = NULL, ...) {
+  # Input validation
+  if (!is.null(data)) {
+    validate_meta_data(data, required_cols = c("ai", "bi", "ci", "di"))
+  }
+
   cbamm_escalc(measure = "OR", ai = ai, bi = bi, ci = ci, di = di,
                data = data, ...)
 }
@@ -174,6 +179,11 @@ cbamm_calc_or <- function(ai, bi, ci, di, data = NULL, ...) {
 #' @describeIn quick-escalc Calculate Risk Ratio (log scale)
 #' @export
 cbamm_calc_rr <- function(ai, bi, ci, di, data = NULL, ...) {
+  # Input validation
+  if (!is.null(data)) {
+    validate_meta_data(data, required_cols = c("ai", "bi", "ci", "di"))
+  }
+
   cbamm_escalc(measure = "RR", ai = ai, bi = bi, ci = ci, di = di,
                data = data, ...)
 }
@@ -181,6 +191,11 @@ cbamm_calc_rr <- function(ai, bi, ci, di, data = NULL, ...) {
 #' @describeIn quick-escalc Calculate Risk Difference
 #' @export
 cbamm_calc_rd <- function(ai, bi, ci, di, data = NULL, ...) {
+  # Input validation
+  if (!is.null(data)) {
+    validate_meta_data(data, required_cols = c("ai", "bi", "ci", "di"))
+  }
+
   cbamm_escalc(measure = "RD", ai = ai, bi = bi, ci = ci, di = di,
                data = data, ...)
 }
@@ -188,6 +203,11 @@ cbamm_calc_rd <- function(ai, bi, ci, di, data = NULL, ...) {
 #' @describeIn quick-escalc Calculate Peto Odds Ratio
 #' @export
 cbamm_calc_peto <- function(ai, bi, ci, di, data = NULL, ...) {
+  # Input validation
+  if (!is.null(data)) {
+    validate_meta_data(data, required_cols = c("ai", "bi", "ci", "di"))
+  }
+
   cbamm_escalc(measure = "PETO", ai = ai, bi = bi, ci = ci, di = di,
                data = data, add = 0, to = "none", ...)
 }
@@ -195,6 +215,11 @@ cbamm_calc_peto <- function(ai, bi, ci, di, data = NULL, ...) {
 #' @describeIn quick-escalc Calculate Mean Difference
 #' @export
 cbamm_calc_md <- function(m1i, sd1i, n1i, m2i, sd2i, n2i, data = NULL, ...) {
+  # Input validation
+  if (!is.null(data)) {
+    validate_meta_data(data, required_cols = c("m1i", "sd1i", "n1i", "m2i", "sd2i", "n2i"))
+  }
+
   cbamm_escalc(measure = "MD",
                m1i = m1i, sd1i = sd1i, n1i = n1i,
                m2i = m2i, sd2i = sd2i, n2i = n2i,
@@ -204,6 +229,11 @@ cbamm_calc_md <- function(m1i, sd1i, n1i, m2i, sd2i, n2i, data = NULL, ...) {
 #' @describeIn quick-escalc Calculate Standardized Mean Difference (Hedges' g)
 #' @export
 cbamm_calc_smd <- function(m1i, sd1i, n1i, m2i, sd2i, n2i, data = NULL, ...) {
+  # Input validation
+  if (!is.null(data)) {
+    validate_meta_data(data, required_cols = c("m1i", "sd1i", "n1i", "m2i", "sd2i", "n2i"))
+  }
+
   cbamm_escalc(measure = "SMD",
                m1i = m1i, sd1i = sd1i, n1i = n1i,
                m2i = m2i, sd2i = sd2i, n2i = n2i,
@@ -213,18 +243,33 @@ cbamm_calc_smd <- function(m1i, sd1i, n1i, m2i, sd2i, n2i, data = NULL, ...) {
 #' @describeIn quick-escalc Calculate Proportion (logit transformed)
 #' @export
 cbamm_calc_prop <- function(xi, mi, data = NULL, ...) {
+  # Input validation
+  if (!is.null(data)) {
+    validate_meta_data(data, required_cols = c("xi", "mi"))
+  }
+
   cbamm_escalc(measure = "PLO", xi = xi, mi = mi, data = data, ...)
 }
 
 #' @describeIn quick-escalc Calculate Incidence Rate (log scale)
 #' @export
 cbamm_calc_ir <- function(xi, ti, data = NULL, ...) {
+  # Input validation
+  if (!is.null(data)) {
+    validate_meta_data(data, required_cols = c("xi", "ti"))
+  }
+
   cbamm_escalc(measure = "IRLN", xi = xi, ti = ti, data = data, ...)
 }
 
 #' @describeIn quick-escalc Calculate Fisher's z-transformed correlation
 #' @export
 cbamm_calc_zcor <- function(ri, ni, data = NULL, ...) {
+  # Input validation
+  if (!is.null(data)) {
+    validate_meta_data(data, required_cols = c("ri", "ni"))
+  }
+
   cbamm_escalc(measure = "ZCOR", ri = ri, ni = ni, data = data, ...)
 }
 

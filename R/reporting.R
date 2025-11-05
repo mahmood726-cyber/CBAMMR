@@ -128,8 +128,13 @@ cbamm_grade_profile <- function(results, data, outcome_name = "Primary outcome",
 
   # Auto-assess publication bias
   if (is.null(publication_bias) && !is.null(results$small_study)) {
-    egger_p <- try(results$small_study$egger$p.value, silent = TRUE)
-    if (!inherits(egger_p, "try-error") && is.numeric(egger_p)) {
+    egger_p <- safe_try(
+      results$small_study$egger$p.value,
+      context = "extracting Egger p-value",
+      return_on_error = NULL,
+      warn = FALSE
+    )
+    if (!is.null(egger_p) && is.numeric(egger_p)) {
       publication_bias <- if (egger_p < 0.05) "serious" else "not serious"
       message(sprintf("Auto-assessed publication bias as '%s' based on Egger p = %.3f",
                       publication_bias, egger_p))
@@ -140,8 +145,8 @@ cbamm_grade_profile <- function(results, data, outcome_name = "Primary outcome",
   if (is.null(imprecision) && !is.null(results$pooled$transport)) {
     fit <- results$pooled$transport
     mm <- .cbamm_measure_meta(results$pooled$transport$measure)
-    pred <- try(metafor::predict(fit, transf = mm$transf), silent = TRUE)
-    if (!inherits(pred, "try-error")) {
+    pred <- safe_predict(fit, transf = mm$transf, context = "assessing imprecision")
+    if (!is.null(pred)) {
       ci_width <- pred$ci.ub - pred$ci.lb
       # Rough heuristic: ratio measures with CI crossing 1.0 or width > threshold
       if (mm$is_ratio) {

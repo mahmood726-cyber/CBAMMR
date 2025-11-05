@@ -73,6 +73,14 @@ simulate_cbamm_data <- function(n_rct = 18, n_obs = 18, n_mr = 8,
 #' data <- simulate_cbamm_binary(n = 25, measure = "OR")
 #' head(data)
 simulate_cbamm_binary <- function(n = 20, measure = "OR", seed = 123) {
+  # Input validation
+  if (!is.numeric(n) || n < 1) {
+    stop("'n' must be a positive integer")
+  }
+  if (!is.null(seed) && (!is.numeric(seed) || length(seed) != 1)) {
+    stop("'seed' must be a single numeric value or NULL")
+  }
+
   set.seed(seed)
   study_id <- sprintf("B%02d", 1:n)
   study_type <- sample(c("RCT","OBS"), n, replace = TRUE, prob = c(0.6,0.4))
@@ -105,6 +113,14 @@ simulate_cbamm_binary <- function(n = 20, measure = "OR", seed = 123) {
 #' data <- simulate_cbamm_continuous(n = 20, measure = "SMD")
 #' head(data)
 simulate_cbamm_continuous <- function(n = 20, measure = "SMD", seed = 321) {
+  # Input validation
+  if (!is.numeric(n) || n < 1) {
+    stop("'n' must be a positive integer")
+  }
+  if (!is.null(seed) && (!is.numeric(seed) || length(seed) != 1)) {
+    stop("'seed' must be a single numeric value or NULL")
+  }
+
   set.seed(seed)
   study_id <- sprintf("C%02d", 1:n)
   study_type <- sample(c("RCT","OBS"), n, replace = TRUE)

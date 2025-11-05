@@ -342,9 +342,8 @@ print.cbamm_sensitivity <- function(x, ...) {
 #' }
 cbamm_publication_bias_sensitivity <- function(yi, vi, methods = "all") {
   # Input validation
-  if (length(yi) != length(vi)) {
-    stop("yi and vi must have the same length")
-  }
+  validate_meta_inputs(yi, vi)
+  validate_sample_size(length(yi), "publication-bias", warning_only = TRUE)
 
   if ("all" %in% methods) {
     methods <- c("trim_fill", "egger")

@@ -7,7 +7,10 @@
 #' @author CBAMMR Development Team
 #' @date 2025-10-28
 
-# Load required packages
+# Note: This is a standalone script for data processing
+# It's not part of the package's exported functions
+# Using library() is acceptable here since it's a script
+# For use in package development/data preparation only
 suppressPackageStartupMessages({
   library(metafor)
   library(metadat)
