@@ -1,29 +1,26 @@
 Package: CBAMMR
 Type: Package
 Title: Comprehensive Bayesian and Advanced Meta-Analysis Methods in R
-Version: 8.14.0
+Version: 9.0.0
 Date: 2025-11-05
 Authors@R: c(
     person("Mahmood", "Developer", email = "mahmood726@gmail.com", role = c("aut", "cre")),
     person("Claude", "AI", role = "ctb")
     )
-Description: Revolutionary intelligent meta-analysis system that removes researcher degrees
-    of freedom and prevents p-hacking through automated, data-driven decisions. Features
-    cbamm_auto() - the world's first fully automated meta-analysis function that detects data type,
-    calculates appropriate effect sizes, selects optimal methods based on data characteristics,
-    assesses heterogeneity and publication bias, runs sensitivity analyses, provides
-    evidence-based recommendations, and generates journal-quality R Markdown results sections
-    ready for direct manuscript inclusion - all without subjective choices. Also includes ALL capabilities
-    from metafor and meta packages: complete effect size calculation (40+ measures), all meta-analysis
-    types (binary, continuous, proportions, rates, correlations), comprehensive heterogeneity toolkit
-    (Q, I², H², tau², Bayes factors, R², decomposition), model selection (AIC/BIC/AICc, CV, LRT),
-    complete publication bias assessment (7 methods: Egger, Begg, trim-and-fill, PET-PEESE, selection
-    models, p-curve, funnel tests), pairwise effects, transportability weighting, robust variance
-    estimation, multivariate meta-analysis, Bayesian methods (bootstrap, MCMC), distribution-free
-    methods (permutation, bootstrap, quantile regression), clinical decision tools (EVPI, decision
-    curves, NNT, treatment rankings), complete metafor/meta plotting integration (10 plot types),
-    unified interface with batch generation, 10 example datasets, and interactive GUI. Standardizes
-    methodology and ensures reproducibility. The ultimate solution for evidence-based meta-analysis.
+Description: Integrated workflow package for meta-analysis building on established tools
+    (metafor, meta, RoBMA). Provides three key contributions: (1) Workflow automation through
+    cbamm_auto() function that standardizes analytical decisions by automatically detecting data
+    types, calculating effect sizes via metafor::escalc(), selecting appropriate methods, and
+    generating reproducible reports; (2) Clinical decision support tools including fragility
+    indices, baseline-risk-specific NNT calculations, and decision curve analysis integration;
+    (3) Transportability weighting using entropy balancing to adjust meta-analytic estimates
+    for target populations. Includes effect size calculation (wrapping metafor, supporting 40+
+    measures), heterogeneity assessment (Q, I², H², tau²), publication bias methods (Egger,
+    Begg, trim-and-fill, PET-PEESE via existing packages), Bayesian approaches (via brms/RoBMA),
+    and automated GRADE/PRISMA 2020 reporting. Ten example datasets demonstrate common meta-analysis
+    scenarios. Aims to improve reproducibility through standardized workflows while maintaining
+    transparency in methodological choices. Users seeking advanced customization should consider
+    using metafor or meta packages directly.
 License: Apache License (>= 2.0)
 Encoding: UTF-8
 LazyData: true
