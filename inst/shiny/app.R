@@ -492,16 +492,105 @@ server <- function(input, output, session) {
     showNotification(paste("Generated", input$sim_n, "studies"), type = "success")
   })
 
-  # Upload file
+  # Upload file with comprehensive security validation
   observeEvent(input$datafile, {
     req(input$datafile)
-    ext <- tools::file_ext(input$datafile$name)
-    rv$data <- if (ext == "csv") {
-      read.csv(input$datafile$datapath)
-    } else if (ext %in% c("xlsx", "xls")) {
-      readxl::read_excel(input$datafile$datapath)
-    }
-    showNotification("Data uploaded successfully!", type = "success")
+
+    tryCatch({
+      # SECURITY: Validate file size (max 10MB)
+      file_size_mb <- file.info(input$datafile$datapath)$size / 1024 / 1024
+      if (file_size_mb > 10) {
+        showNotification(
+          paste0("File too large (", round(file_size_mb, 1), "MB). Maximum allowed: 10MB"),
+          type = "error",
+          duration = 10
+        )
+        return(NULL)
+      }
+
+      # SECURITY: Validate file extension
+      ext <- tolower(tools::file_ext(input$datafile$name))
+      allowed_ext <- c("csv", "xlsx", "xls")
+      if (!ext %in% allowed_ext) {
+        showNotification(
+          paste0("Invalid file type '.", ext, "'. Allowed: ", paste(allowed_ext, collapse = ", ")),
+          type = "error",
+          duration = 10
+        )
+        return(NULL)
+      }
+
+      # SECURITY: Validate filename (no path traversal attempts)
+      if (grepl("\\.\\./|/\\.\\.|\\.\\./", input$datafile$name)) {
+        showNotification("Invalid filename detected", type = "error", duration = 10)
+        return(NULL)
+      }
+
+      # Read file based on extension
+      raw_data <- if (ext == "csv") {
+        read.csv(input$datafile$datapath, stringsAsFactors = FALSE, check.names = FALSE)
+      } else if (ext %in% c("xlsx", "xls")) {
+        readxl::read_excel(input$datafile$datapath)
+      } else {
+        stop("Unsupported file type")
+      }
+
+      # SECURITY: Validate data structure
+      if (!is.data.frame(raw_data)) {
+        showNotification("Invalid data format: not a data frame", type = "error", duration = 10)
+        return(NULL)
+      }
+
+      if (nrow(raw_data) == 0) {
+        showNotification("File is empty (no rows)", type = "error", duration = 10)
+        return(NULL)
+      }
+
+      if (nrow(raw_data) > 10000) {
+        showNotification(
+          paste0("Too many rows (", nrow(raw_data), "). Maximum allowed: 10,000"),
+          type = "error",
+          duration = 10
+        )
+        return(NULL)
+      }
+
+      # SECURITY: Sanitize data to prevent CSV injection attacks
+      # Check for formulas in character columns (formulas start with =, +, -, @, |, %)
+      for (col in names(raw_data)) {
+        if (is.character(raw_data[[col]])) {
+          # Detect potential CSV injection
+          has_formula <- grepl("^[=+\\-@|%]", raw_data[[col]])
+          if (any(has_formula, na.rm = TRUE)) {
+            showNotification(
+              paste0("Security warning: Column '", col, "' contains potential formula injection. ",
+                    "Formulas have been disabled by adding a quote prefix."),
+              type = "warning",
+              duration = 10
+            )
+            # Sanitize by adding quote prefix to formulas
+            raw_data[[col]][has_formula] <- paste0("'", raw_data[[col]][has_formula])
+          }
+        }
+      }
+
+      # Store sanitized data
+      rv$data <- raw_data
+
+      showNotification(
+        paste0("Data uploaded successfully! ", nrow(rv$data), " rows, ", ncol(rv$data), " columns"),
+        type = "success",
+        duration = 5
+      )
+
+    }, error = function(e) {
+      showNotification(
+        paste0("Error reading file: ", e$message),
+        type = "error",
+        duration = 10
+      )
+      return(NULL)
+    })
   })
 
   # Data table
