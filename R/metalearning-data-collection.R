@@ -441,7 +441,25 @@ cbamm_collect_github_datasets <- function(repos = NULL,
     repo_path <- file.path(output_dir, repo_name)
 
     if (!dir.exists(repo_path)) {
-      system(sprintf("git clone https://github.com/%s %s", repo, repo_path))
+      # Validate repo name to prevent command injection
+      if (!grepl("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", repo)) {
+        warning(sprintf("Invalid repository name format: %s (skipping)", repo))
+        next
+      }
+
+      # Use system2() for safer execution with separate arguments
+      github_url <- sprintf("https://github.com/%s", repo)
+      clone_result <- safe_try(
+        system2("git", args = c("clone", github_url, repo_path), stdout = TRUE, stderr = TRUE),
+        context = sprintf("cloning repository %s", repo),
+        return_on_error = NULL,
+        warn = TRUE
+      )
+
+      if (is.null(clone_result) || !dir.exists(repo_path)) {
+        warning(sprintf("Failed to clone repository: %s", repo))
+        next
+      }
     }
 
     # Find CSV files

@@ -203,8 +203,17 @@ cbamm_nnt_by_baseline_risk <- function(results,
                                        measure = NULL,
                                        ci_level = 0.95) {
 
+  # Input validation
   if (!requireNamespace("dplyr", quietly = TRUE)) {
     stop("dplyr required")
+  }
+
+  # Validate baseline_risks
+  if (!is.numeric(baseline_risks) || any(!is.finite(baseline_risks))) {
+    stop("baseline_risks must be a numeric vector of finite values")
+  }
+  if (any(baseline_risks <= 0) || any(baseline_risks >= 1)) {
+    stop("All baseline_risks must be between 0 and 1 (exclusive)")
   }
 
   # Extract effect estimate
@@ -264,10 +273,31 @@ cbamm_nnt_by_baseline_risk <- function(results,
       stop("Measure must be OR, RR, HR, or RD")
     }
 
-    # Calculate NNT (handle direction)
-    nnt <- if (abs(ard) < 0.0001) NA else 1 / abs(ard)
-    nnt_lb <- if (abs(ard_ub) < 0.0001) NA else 1 / abs(ard_ub)
-    nnt_ub <- if (abs(ard_lb) < 0.0001) NA else 1 / abs(ard_lb)
+    # Calculate NNT with overflow protection
+    # Define maximum NNT to prevent unrealistic values
+    MAX_NNT <- 100000
+
+    # Calculate NNT (handle near-zero ARD and cap extreme values)
+    if (abs(ard) < 0.0001) {
+      nnt <- NA_real_
+    } else {
+      nnt <- 1 / abs(ard)
+      nnt <- if (is.finite(nnt)) min(nnt, MAX_NNT) else NA_real_
+    }
+
+    if (abs(ard_ub) < 0.0001) {
+      nnt_lb <- NA_real_
+    } else {
+      nnt_lb <- 1 / abs(ard_ub)
+      nnt_lb <- if (is.finite(nnt_lb)) min(nnt_lb, MAX_NNT) else NA_real_
+    }
+
+    if (abs(ard_lb) < 0.0001) {
+      nnt_ub <- NA_real_
+    } else {
+      nnt_ub <- 1 / abs(ard_lb)
+      nnt_ub <- if (is.finite(nnt_ub)) min(nnt_ub, MAX_NNT) else NA_real_
+    }
 
     # Determine benefit vs harm
     direction <- if (ard > 0) "NNTB" else if (ard < 0) "NNTH" else "No effect"

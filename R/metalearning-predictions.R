@@ -97,9 +97,16 @@ cbamm_predict_heterogeneity <- function(n_studies,
     stop("Python prediction script not found: ", python_script)
   }
 
-  # Call Python script
-  cmd <- sprintf("python3 %s '%s'", shQuote(python_script), input_json)
-  result_json <- system(cmd, intern = TRUE)
+  # Call Python script with system2 (more secure than system)
+  result_json <- safe_try(
+    system2("python3", args = c(python_script, input_json), stdout = TRUE, stderr = TRUE),
+    context = "calling Python heterogeneity prediction script",
+    return_on_error = NULL
+  )
+
+  if (is.null(result_json)) {
+    stop("Failed to execute Python prediction script")
+  }
 
   # Parse result
   result <- jsonlite::fromJSON(result_json)

@@ -262,13 +262,13 @@ cbamm_reproducibility_report <- function(results = NULL, config = NULL,
 
   # Add git info if available
   if (dir.exists(".git")) {
-    git_info <- try({
+    git_info <- safe_try({
       list(
-        commit = system("git rev-parse HEAD", intern = TRUE),
-        branch = system("git rev-parse --abbrev-ref HEAD", intern = TRUE)
+        commit = system2("git", args = c("rev-parse", "HEAD"), stdout = TRUE, stderr = FALSE),
+        branch = system2("git", args = c("rev-parse", "--abbrev-ref", "HEAD"), stdout = TRUE, stderr = FALSE)
       )
-    }, silent = TRUE)
-    if (!inherits(git_info, "try-error")) {
+    }, context = "retrieving git repository information", return_on_error = NULL, warn = FALSE)
+    if (!is.null(git_info)) {
       repro_info$git_info <- git_info
     }
   }

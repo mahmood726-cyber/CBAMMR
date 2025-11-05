@@ -439,6 +439,16 @@ interpret_prob_best <- function(results) {
 cbamm_nnt_meta <- function(yi, vi, baseline_risk, measure = c("OR", "RR"),
                            time_horizon = 1) {
 
+  # Input validation
+  validate_meta_inputs(yi, vi)
+
+  if (!is.numeric(baseline_risk) || length(baseline_risk) != 1 || !is.finite(baseline_risk)) {
+    stop("baseline_risk must be a single finite numeric value")
+  }
+  if (baseline_risk <= 0 || baseline_risk >= 1) {
+    stop("baseline_risk must be between 0 and 1 (exclusive)")
+  }
+
   measure <- match.arg(measure)
 
   # Pooled effect (if multiple studies, take weighted mean)
@@ -467,8 +477,22 @@ cbamm_nnt_meta <- function(yi, vi, baseline_risk, measure = c("OR", "RR"),
     arr <- baseline_risk - treatment_risk
   }
 
-  # NNT
-  nnt <- 1 / abs(arr)
+  # NNT with overflow protection
+  MAX_NNT <- 100000  # Cap unrealistic NNT values
+
+  if (abs(arr) < 0.0001) {
+    nnt <- NA_real_
+    warning("Absolute risk reduction is near zero; NNT is undefined")
+  } else {
+    nnt <- 1 / abs(arr)
+    if (!is.finite(nnt)) {
+      nnt <- NA_real_
+      warning("NNT calculation resulted in non-finite value")
+    } else if (nnt > MAX_NNT) {
+      nnt <- MAX_NNT
+      warning(sprintf("NNT capped at maximum value of %d (extremely small treatment effect)", MAX_NNT))
+    }
+  }
 
   # Confidence interval (delta method)
   se_yi <- sqrt(vi_pooled)
@@ -486,8 +510,20 @@ cbamm_nnt_meta <- function(yi, vi, baseline_risk, measure = c("OR", "RR"),
   # CI for ARR
   arr_ci <- arr + c(-1, 1) * qnorm(0.975) * se_arr
 
-  # CI for NNT (reciprocal)
-  nnt_ci <- 1 / abs(arr_ci)
+  # CI for NNT (reciprocal) with overflow protection
+  nnt_ci <- numeric(2)
+  for (i in 1:2) {
+    if (abs(arr_ci[i]) < 0.0001) {
+      nnt_ci[i] <- NA_real_
+    } else {
+      nnt_ci[i] <- 1 / abs(arr_ci[i])
+      if (!is.finite(nnt_ci[i])) {
+        nnt_ci[i] <- NA_real_
+      } else if (nnt_ci[i] > MAX_NNT) {
+        nnt_ci[i] <- MAX_NNT
+      }
+    }
+  }
   nnt_ci <- sort(nnt_ci)  # Ensure lower < upper
 
   # Interpretation

@@ -653,19 +653,40 @@ class MetaLearningCollector:
 
     def _save_database(self):
         """Save database to disk"""
-        # Save as pickle
-        pickle_file = self.output_dir / "metalearning_database.pkl"
-        with open(pickle_file, 'wb') as f:
-            pickle.dump(self.datasets, f)
-        logger.info(f"Saved database to: {pickle_file}")
+        # SECURITY WARNING: Pickle can execute arbitrary code during deserialization.
+        # Only load pickle files from trusted sources.
+        # For production use, prefer the JSON format below.
 
-        # Save metadata as JSON
+        # Save as pickle (for backward compatibility, but with security warning)
+        pickle_file = self.output_dir / "metalearning_database.pkl"
+        try:
+            with open(pickle_file, 'wb') as f:
+                pickle.dump(self.datasets, f, protocol=pickle.HIGHEST_PROTOCOL)
+            logger.warning(f"Saved database to: {pickle_file} (PICKLE FORMAT - LOAD ONLY FROM TRUSTED SOURCES)")
+        except Exception as e:
+            logger.error(f"Failed to save pickle file: {e}")
+
+        # Save complete data as JSON (RECOMMENDED - safer alternative to pickle)
+        json_complete_file = self.output_dir / "metalearning_database_complete.json"
+        try:
+            complete_data = {name: ds.to_dict(include_raw_data=True)
+                           for name, ds in self.datasets.items()}
+            with open(json_complete_file, 'w') as f:
+                json.dump(complete_data, f, indent=2)
+            logger.info(f"✅ Saved complete database to: {json_complete_file} (RECOMMENDED FORMAT)")
+        except Exception as e:
+            logger.error(f"Failed to save complete JSON: {e}")
+
+        # Save metadata as JSON (lightweight, no raw data)
         json_file = self.output_dir / "metalearning_database_metadata.json"
-        metadata = {name: ds.to_dict(include_raw_data=False)
-                   for name, ds in self.datasets.items()}
-        with open(json_file, 'w') as f:
-            json.dump(metadata, f, indent=2)
-        logger.info(f"Saved metadata to: {json_file}")
+        try:
+            metadata = {name: ds.to_dict(include_raw_data=False)
+                       for name, ds in self.datasets.items()}
+            with open(json_file, 'w') as f:
+                json.dump(metadata, f, indent=2)
+            logger.info(f"Saved metadata to: {json_file}")
+        except Exception as e:
+            logger.error(f"Failed to save metadata JSON: {e}")
 
         # Save summary as CSV
         self._save_summary_csv()

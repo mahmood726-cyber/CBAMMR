@@ -11,13 +11,10 @@ from pathlib import Path
 from urllib.request import urlopen, Request
 from urllib.parse import urlencode
 import ssl
+from datetime import datetime
 
-# For downloading files
-try:
-    # Create unverified SSL context for downloads
-    ssl._create_default_https_context = ssl._create_unverified_context
-except:
-    pass
+# SECURITY: SSL certificate verification is ENABLED (default)
+# Do NOT disable SSL verification as it exposes the application to MITM attacks
 
 
 def collect_zenodo_metaanalyses(output_dir="data/metalearning/zenodo", max_results=50):
@@ -239,7 +236,7 @@ def create_collection_report(zenodo_records, github_repos, output_dir="data/meta
 
     with open(report_file, 'w') as f:
         f.write("# CBAMMR Meta-Learning Data Collection Report\n\n")
-        f.write(f"**Date:** {os.popen('date').read().strip()}\n\n")
+        f.write(f"**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
         f.write("---\n\n")
 
         # Summary statistics

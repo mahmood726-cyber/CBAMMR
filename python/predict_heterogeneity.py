@@ -20,20 +20,66 @@ warnings.filterwarnings('ignore')
 
 
 def load_models():
-    """Load all trained models and preprocessing objects."""
+    """
+    Load all trained models and preprocessing objects.
+
+    SECURITY NOTE: This function loads pickled ML models using joblib.
+    Only use with models from trusted sources. Loading untrusted pickle
+    files can execute arbitrary code.
+
+    Raises:
+        FileNotFoundError: If model files are missing
+        Exception: If model loading fails
+    """
     models_dir = Path(__file__).parent.parent / "data/metalearning/models"
 
-    models = {
-        'rf_i2': joblib.load(models_dir / "rf_i2_model.pkl"),
-        'rf_tau2': joblib.load(models_dir / "rf_tau2_model.pkl"),
-        'xgb_i2': joblib.load(models_dir / "xgb_i2_model.pkl"),
-        'xgb_tau2': joblib.load(models_dir / "xgb_tau2_model.pkl"),
-        'scaler': joblib.load(models_dir / "scaler.pkl"),
-        'label_encoders': joblib.load(models_dir / "label_encoders.pkl")
+    # Verify models directory exists
+    if not models_dir.exists():
+        raise FileNotFoundError(
+            f"Models directory not found: {models_dir}\n"
+            "Run train_metalearning_models.py first to create models."
+        )
+
+    # Define required model files
+    required_files = {
+        'rf_i2': "rf_i2_model.pkl",
+        'rf_tau2': "rf_tau2_model.pkl",
+        'xgb_i2': "xgb_i2_model.pkl",
+        'xgb_tau2': "xgb_tau2_model.pkl",
+        'scaler': "scaler.pkl",
+        'label_encoders': "label_encoders.pkl"
     }
 
-    with open(models_dir / "feature_names.json") as f:
-        models['feature_names'] = json.load(f)['features']
+    # Check all files exist before loading
+    missing_files = []
+    for name, filename in required_files.items():
+        if not (models_dir / filename).exists():
+            missing_files.append(filename)
+
+    if missing_files:
+        raise FileNotFoundError(
+            f"Missing required model files: {', '.join(missing_files)}\n"
+            "Run train_metalearning_models.py to create all models."
+        )
+
+    # Load models with error handling
+    models = {}
+    try:
+        for name, filename in required_files.items():
+            models[name] = joblib.load(models_dir / filename)
+    except Exception as e:
+        raise Exception(f"Failed to load model {filename}: {str(e)}")
+
+    # Load feature names
+    feature_file = models_dir / "feature_names.json"
+    if not feature_file.exists():
+        raise FileNotFoundError(f"Feature names file not found: {feature_file}")
+
+    try:
+        with open(feature_file) as f:
+            models['feature_names'] = json.load(f)['features']
+    except Exception as e:
+        raise Exception(f"Failed to load feature names: {str(e)}")
 
     return models
 
@@ -44,21 +90,48 @@ def prepare_features(input_data: dict, models: dict) -> np.ndarray:
 
     Args:
         input_data: Dictionary with:
-            - n_studies: Number of studies
-            - outcome_measure: "OR", "RR", "SMD", "MD", "HR", "COR"
-            - domain: Research domain
-            - year_median: Median publication year
-            - year_range: Range of publication years
-            - pooled_effect: Pooled effect size
-            - ci_width: Confidence interval width
-            - total_n: Total sample size
-            - Q: Cochran's Q statistic (if available)
+            - n_studies: Number of studies (REQUIRED)
+            - outcome_measure: "OR", "RR", "SMD", "MD", "HR", "COR" (REQUIRED)
+            - domain: Research domain (optional, default: "cardiology")
+            - year_median: Median publication year (optional, default: 2020)
+            - year_range: Range of publication years (optional, default: 10)
+            - pooled_effect: Pooled effect size (optional, default: 0.5)
+            - ci_width: Confidence interval width (optional, default: 0.2)
+            - total_n: Total sample size (optional, default: n_studies * 100)
+            - Q: Cochran's Q statistic (optional, computed from n_studies)
 
     Returns:
         Feature array ready for prediction
+
+    Raises:
+        ValueError: If required fields are missing or invalid
     """
-    # Extract values
-    n_studies = input_data['n_studies']
+    # Validate required fields
+    if 'n_studies' not in input_data:
+        raise ValueError("Required field 'n_studies' is missing")
+    if 'outcome_measure' not in input_data:
+        raise ValueError("Required field 'outcome_measure' is missing")
+
+    # Extract and validate n_studies
+    try:
+        n_studies = int(input_data['n_studies'])
+        if n_studies < 2:
+            raise ValueError("n_studies must be at least 2")
+        if n_studies > 10000:
+            raise ValueError("n_studies cannot exceed 10000 (likely data error)")
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"Invalid n_studies value: {str(e)}")
+
+    # Validate outcome_measure
+    outcome_measure = input_data['outcome_measure']
+    valid_measures = ["OR", "RR", "SMD", "MD", "HR", "COR", "RD"]
+    if outcome_measure not in valid_measures:
+        raise ValueError(
+            f"Invalid outcome_measure '{outcome_measure}'. "
+            f"Must be one of: {', '.join(valid_measures)}"
+        )
+
+    # Extract values with defaults and validation
     year_median = input_data.get('year_median', 2020)
     year_range = input_data.get('year_range', 10)
     pooled_effect = input_data.get('pooled_effect', 0.5)
