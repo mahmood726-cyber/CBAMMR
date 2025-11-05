@@ -1,7 +1,7 @@
 Package: CBAMMR
 Type: Package
 Title: Comprehensive Bayesian and Advanced Meta-Analysis Methods in R
-Version: 8.11.0
+Version: 8.12.0
 Date: 2025-11-05
 Authors@R: c(
     person("Mahmood", "Developer", email = "mahmood726@gmail.com", role = c("aut", "cre")),
@@ -46,6 +46,11 @@ Imports:
     grDevices
 Suggests:
     meta (>= 6.0.0),
+    netmeta (>= 2.0.0),
+    visNetwork (>= 2.1.0),
+    survival (>= 3.2.0),
+    mada (>= 0.5.0),
+    dosresmeta (>= 2.0.0),
     WeightIt (>= 0.12.0),
     cobalt (>= 4.3.0),
     brms (>= 2.16.0),
