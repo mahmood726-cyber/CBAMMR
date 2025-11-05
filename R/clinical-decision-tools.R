@@ -49,10 +49,15 @@ NULL
 #' @export
 cbamm_individualized_effect <- function(yi, vi, moderators, patient_profile) {
 
-  require(metafor)
+  # Validate inputs
+  validate_meta_inputs(yi, vi)
+
+  if (!is.matrix(moderators) && !is.data.frame(moderators)) {
+    stop("'moderators' must be a matrix or data frame")
+  }
 
   # Fit meta-regression with moderators
-  fit <- rma(yi, vi, mods = moderators, method = "REML")
+  fit <- metafor::rma(yi, vi, mods = moderators, method = "REML")
 
   # Predict for patient profile
   # Add intercept

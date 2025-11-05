@@ -220,7 +220,11 @@ cbamm_bootstrap_ci <- function(yi, vi, conf_level = 0.95, n_boot = 10000,
 #' @export
 cbamm_quantile_ma <- function(yi, vi, tau = c(0.1, 0.25, 0.5, 0.75, 0.9)) {
 
-  require(quantreg)
+  # Validate inputs
+  validate_meta_inputs(yi, vi)
+
+  # Check package availability
+  check_package_available("quantreg", "cbamm_quantile_ma")
 
   n <- length(yi)
   k <- length(tau)
