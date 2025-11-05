@@ -1,0 +1,152 @@
+url: https://mahmood726-cyber.github.io/CBAMMR/
+template:
+  bootstrap: 5
+  bootswatch: flatly
+  theme: arrow-dark
+  bslib:
+    primary: "#003366"
+    navbar-bg: "#003366"
+
+navbar:
+  structure:
+    left:  [intro, reference, articles, tutorials, news]
+    right: [search, github]
+  components:
+    home:
+      icon: fas fa-home fa-lg
+      href: index.html
+    reference:
+      text: Reference
+      href: reference/index.html
+    news:
+      text: Changelog
+      href: news/index.html
+    github:
+      icon: fab fa-github fa-lg
+      href: https://github.com/mahmood726-cyber/CBAMMR
+
+home:
+  title: "CBAMMR: World's Most Comprehensive Meta-Analysis Package"
+  description: >
+    Comprehensive Bayesian and Advanced Meta-Analysis Methods in R.
+    177 functions, 18 modules, 17 unique methods not available anywhere else.
+
+reference:
+  - title: "Core Meta-Analysis"
+    desc: "Essential meta-analysis functions"
+    contents:
+      - starts_with("cbamm_meta")
+      - cbamm_escalc
+      - cbamm_calc_
+
+  - title: "Effect Size Conversion"
+    desc: "Convert between effect size measures"
+    contents:
+      - starts_with("cbamm_convert_")
+      - cbamm_backcalc_es
+
+  - title: "Publication Bias"
+    desc: "Publication bias detection and adjustment"
+    contents:
+      - cbamm_funnel_plot
+      - cbamm_egger_test
+      - cbamm_begg_test
+      - cbamm_trim_fill
+      - cbamm_pet_peese
+      - cbamm_copas_selection
+      - cbamm_limit_metaanalysis
+      - cbamm_pcurve_analysis
+      - cbamm_puniform
+
+  - title: "Heterogeneity Assessment"
+    desc: "Assess and explore heterogeneity"
+    contents:
+      - starts_with("cbamm_heterogeneity")
+      - cbamm_metareg_r2
+
+  - title: "Network Meta-Analysis"
+    desc: "Network meta-analysis methods"
+    contents:
+      - starts_with("cbamm_nma")
+      - cbamm_bayesian_nma
+      - cbamm_component_nma
+
+  - title: "Subgroup Analysis"
+    desc: "Comprehensive subgroup analysis"
+    contents:
+      - cbamm_subgroup_analysis
+      - cbamm_subgroup
+
+  - title: "Survival Meta-Analysis"
+    desc: "Meta-analysis of time-to-event data"
+    contents:
+      - starts_with("cbamm_survival_")
+      - cbamm_rmst_meta
+
+  - title: "Bayesian Methods"
+    desc: "Bayesian meta-analysis approaches"
+    contents:
+      - starts_with("cbamm_bayesian_")
+      - cbamm_prior_sensitivity
+      - cbamm_posterior_predictive
+
+  - title: "IPD Meta-Analysis"
+    desc: "Individual participant data meta-analysis"
+    contents:
+      - starts_with("cbamm_ipd_")
+
+  - title: "Missing Data Methods"
+    desc: "Handle missing data in meta-analysis"
+    contents:
+      - cbamm_multiple_imputation
+      - cbamm_pattern_mixture_model
+      - cbamm_imor_sensitivity
+      - cbamm_best_worst_case
+
+  - title: "GRADE & Reporting"
+    desc: "Automated GRADE assessment and reporting"
+    contents:
+      - cbamm_grade_assessment
+      - cbamm_summary_of_findings
+      - cbamm_prisma_checklist
+      - cbamm_generate_report
+
+  - title: "Visualization"
+    desc: "Specialized plots and visualizations"
+    contents:
+      - cbamm_forest_plot
+      - cbamm_radial_meta
+      - cbamm_labbe_meta
+      - cbamm_drapery_meta
+      - cbamm_baujat_plot
+      - cbamm_bubble_plot
+
+  - title: "ROB Assessment"
+    desc: "Risk of bias assessment"
+    contents:
+      - starts_with("cbamm_rob_")
+
+  - title: "AI & Automation"
+    desc: "Intelligent automation and rules"
+    contents:
+      - cbamm_auto
+      - cbamm_ultra_rules_system
+      - cbamm_ollama_analyze
+
+articles:
+  - title: "Getting Started"
+    desc: "Introductory guides"
+    contents:
+      - cbammr-intro
+
+news:
+  releases:
+  - text: "Version 8.15.0"
+    href: https://github.com/mahmood726-cyber/CBAMMR/releases/tag/v8.15.0
+  - text: "Version 8.14.0"
+    href: https://github.com/mahmood726-cyber/CBAMMR/releases/tag/v8.14.0
+
+footer:
+  structure:
+    left: developed_by
+    right: built_with

@@ -1,0 +1,10 @@
+linters: linters_with_defaults(
+    line_length_linter(120),
+    object_name_linter = NULL,  # Allow flexible naming for backwards compatibility
+    cyclocomp_linter = NULL,  # Complex functions are sometimes necessary
+    object_usage_linter = NULL  # Can have false positives
+  )
+exclusions: list(
+    "inst/shiny",
+    "tests/testthat.R"
+  )
