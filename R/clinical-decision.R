@@ -1,29 +1,11 @@
 # Advanced Clinical Decision-Making Functions for CBAMMR
 # Implements net benefit, fragility index, MID/MCID, NNT with baseline risk
 
-#' Calculate Fragility Index for Meta-Analysis
-#'
-#' The fragility index quantifies the minimum number of event status changes
-#' needed to alter the statistical significance of a meta-analysis result.
-#' Lower values indicate more fragile (less robust) findings.
-#'
-#' @param results Results object from run_cbamm_analysis() with binary outcomes
-#' @param data Analysis data with event counts (ai, bi, ci, di)
-#' @param alpha Significance level (default 0.05)
-#' @param direction Character; "loss" (default) for losing significance or "gain" for gaining it
-#'
-#' @return List with fragility index and interpretation
-#' @export
-#'
-#' @examples
-#' \dontrun{
-#' results <- run_cbamm_analysis(data, config = setup_cbamm(effect_measure = "OR"))
-#' fragility <- cbamm_fragility_index(results, data)
-#' print(fragility$interpretation)
-#' }
-cbamm_fragility_index <- function(results, data, alpha = 0.05, direction = "loss") {
+# Internal helper functions for cbamm_fragility_index() -----------------
 
-  # Input validation
+#' Validate inputs for fragility index
+#' @keywords internal
+.fragility_validate_inputs <- function(results, data, alpha) {
   validate_meta_data(data, required_cols = NULL)
 
   if (!requireNamespace("metafor", quietly = TRUE)) {
@@ -37,31 +19,50 @@ cbamm_fragility_index <- function(results, data, alpha = 0.05, direction = "loss
     stop("No pooled results available")
   }
 
+  current_fit
+}
+
+#' Check significance status and direction applicability
+#' @keywords internal
+.fragility_check_significance <- function(current_fit, alpha, direction) {
   current_p <- current_fit$pval
   currently_sig <- current_p < alpha
 
   if (direction == "loss" && !currently_sig) {
     return(list(
-      fragility_index = NA,
-      interpretation = "Result not statistically significant; fragility index not applicable for 'loss' direction"
+      skip = TRUE,
+      result = list(
+        fragility_index = NA,
+        interpretation = "Result not statistically significant; fragility index not applicable for 'loss' direction"
+      )
     ))
   }
 
-  # Check for binary data
+  list(skip = FALSE, current_p = current_p, currently_sig = currently_sig)
+}
+
+#' Check for binary data availability
+#' @keywords internal
+.fragility_check_binary_data <- function(data) {
   if (!all(c("ai", "bi", "ci", "di") %in% names(data))) {
     return(list(
-      fragility_index = NA,
-      interpretation = "Fragility index requires binary outcome data (ai, bi, ci, di)"
+      skip = TRUE,
+      result = list(
+        fragility_index = NA,
+        interpretation = "Fragility index requires binary outcome data (ai, bi, ci, di)"
+      )
     ))
   }
+  list(skip = FALSE)
+}
 
-  # Iteratively modify events until significance changes
+#' Iteratively modify events until significance changes
+#' @keywords internal
+.fragility_iterate_modifications <- function(data, current_fit, alpha, direction, max_iterations = 1000) {
   fragility <- 0
-  max_iterations <- 1000
 
   for (i in 1:max_iterations) {
     # Modify data by converting non-events to events in treatment group
-    # (move one outcome from bi to ai in the study with most non-events)
     data_modified <- data
     idx <- which.max(data_modified$bi)
 
@@ -100,8 +101,13 @@ cbamm_fragility_index <- function(results, data, alpha = 0.05, direction = "loss
     }
   }
 
-  # Interpretation based on established thresholds
-  interpretation <- if (fragility == 0) {
+  fragility
+}
+
+#' Interpret fragility index
+#' @keywords internal
+.fragility_interpret_index <- function(fragility) {
+  if (fragility == 0) {
     "Could not calculate fragility index"
   } else if (fragility <= 5) {
     sprintf("FRAGILE: FI = %d. Result is fragile and susceptible to small changes", fragility)
@@ -112,6 +118,20 @@ cbamm_fragility_index <- function(results, data, alpha = 0.05, direction = "loss
   } else {
     sprintf("ACCEPTABLE: FI = %d. Result has acceptable robustness", fragility)
   }
+}
+
+#' Build fragility index result
+#' @keywords internal
+.fragility_build_result <- function(fragility, current_p, alpha, data) {
+  interpretation <- .fragility_interpret_index(fragility)
+
+  recommendation <- if (fragility <= 5) {
+    "Consider these results with caution. Small changes in data could alter conclusions."
+  } else if (fragility >= 22) {
+    "Results are statistically robust. Unlikely to be altered by small data changes."
+  } else {
+    "Results have moderate robustness. Sensitivity analyses recommended."
+  }
 
   list(
     fragility_index = fragility,
@@ -120,14 +140,48 @@ cbamm_fragility_index <- function(results, data, alpha = 0.05, direction = "loss
     n_studies = nrow(data),
     total_events = sum(data$ai + data$ci),
     interpretation = interpretation,
-    recommendation = if (fragility <= 5) {
-      "Consider these results with caution. Small changes in data could alter conclusions."
-    } else if (fragility >= 22) {
-      "Results are statistically robust. Unlikely to be altered by small data changes."
-    } else {
-      "Results have moderate robustness. Sensitivity analyses recommended."
-    }
+    recommendation = recommendation
   )
+}
+
+#' Calculate Fragility Index for Meta-Analysis
+#'
+#' The fragility index quantifies the minimum number of event status changes
+#' needed to alter the statistical significance of a meta-analysis result.
+#' Lower values indicate more fragile (less robust) findings.
+#'
+#' @param results Results object from run_cbamm_analysis() with binary outcomes
+#' @param data Analysis data with event counts (ai, bi, ci, di)
+#' @param alpha Significance level (default 0.05)
+#' @param direction Character; "loss" (default) for losing significance or "gain" for gaining it
+#'
+#' @return List with fragility index and interpretation
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' results <- run_cbamm_analysis(data, config = setup_cbamm(effect_measure = "OR"))
+#' fragility <- cbamm_fragility_index(results, data)
+#' print(fragility$interpretation)
+#' }
+cbamm_fragility_index <- function(results, data, alpha = 0.05, direction = "loss") {
+
+  # Validate inputs
+  current_fit <- .fragility_validate_inputs(results, data, alpha)
+
+  # Check significance status
+  sig_check <- .fragility_check_significance(current_fit, alpha, direction)
+  if (sig_check$skip) return(sig_check$result)
+
+  # Check for binary data
+  binary_check <- .fragility_check_binary_data(data)
+  if (binary_check$skip) return(binary_check$result)
+
+  # Iteratively modify events until significance changes
+  fragility <- .fragility_iterate_modifications(data, current_fit, alpha, direction)
+
+  # Build and return result
+  .fragility_build_result(fragility, sig_check$current_p, alpha, data)
 }
 
 
