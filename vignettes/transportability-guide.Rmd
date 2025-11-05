@@ -1,0 +1,408 @@
+---
+title: "Guide to Transportability Analysis in CBAMMR"
+author: "CBAMMR Development Team"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Guide to Transportability Analysis in CBAMMR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+## Introduction
+
+Meta-analyses typically pool studies from diverse populations. When you want to apply
+results to a specific target population that differs from the pooled sample, **transportability**
+analysis can adjust estimates to better reflect your population of interest.
+
+This guide shows you how to use CBAMMR's transportability features to:
+
+1. Assess whether transportability is appropriate for your data
+2. Compute transportability weights using entropy balancing
+3. Interpret adjusted estimates
+4. Diagnose potential issues
+
+## When to Use Transportability
+
+### ✓ **USE** transportability when:
+
+- You have study-level covariate data (age, sex, BMI, comorbidities)
+- Your target population differs substantially from the study sample
+- There's evidence of effect heterogeneity by patient characteristics (I² > 50%)
+- You have ≥10 studies for stable weight estimation
+- Extrapolation is moderate (target within ~2 SD of sample)
+
+### ✗ **AVOID** transportability when:
+
+- No study-level covariate data available
+- Target population is similar to study sample
+- Little/no effect heterogeneity exists
+- Small meta-analysis (k < 10 studies)
+- Extreme extrapolation needed (target >> 2 SD from sample)
+
+## Example 1: Basic Transportability Analysis
+
+Let's work through a complete example using simulated data for a cardiovascular intervention.
+
+### Step 1: Prepare Your Data
+
+```{r example-data}
+library(CBAMMR)
+library(metafor)
+library(dplyr)
+
+# Example: Meta-analysis of a cardiovascular intervention
+# Studies enrolled relatively younger, healthier patients
+# We want to transport to an elderly, comorbid population
+
+set.seed(123)
+data <- data.frame(
+  study = paste("Study", LETTERS[1:15]),
+
+  # Patient characteristics (sample population is younger, healthier)
+  age_mean = rnorm(15, mean = 58, sd = 5),
+  female_pct = runif(15, 0.35, 0.55),
+  bmi_mean = rnorm(15, mean = 27, sd = 3),
+  charlson = rpois(15, lambda = 1.8),
+
+  # Treatment vs control outcomes (2x2 table data)
+  # Events in treatment group
+  ai = c(18, 22, 14, 28, 19, 25, 16, 23, 20, 17, 26, 15, 21, 24, 19),
+  # Non-events in treatment
+  bi = c(182, 178, 186, 172, 181, 175, 184, 177, 180, 183, 174, 185, 179, 176, 181),
+  # Events in control
+  ci = c(31, 38, 25, 47, 33, 42, 28, 39, 35, 30, 44, 27, 36, 41, 33),
+  # Non-events in control
+  di = c(169, 162, 175, 153, 167, 158, 172, 161, 165, 170, 156, 173, 164, 159, 167)
+)
+
+# Calculate effect sizes
+data <- escalc(measure = "OR", ai = ai, bi = bi, ci = ci, di = di, data = data)
+
+head(data[, c("study", "age_mean", "female_pct", "bmi_mean", "charlson", "yi", "vi")])
+```
+
+### Step 2: Define Your Target Population
+
+```{r target-population}
+# Our target: Elderly patients with multiple comorbidities
+# (typical Medicare population)
+target <- list(
+  age_mean = 72,      # Elderly (vs sample mean ~58)
+  female_pct = 0.60,  # More female (vs ~45%)
+  bmi_mean = 29,      # Higher BMI (vs ~27)
+  charlson = 3.5      # More comorbid (vs ~1.8)
+)
+
+cat("Sample population (studies):\n")
+cat(sprintf("  Age:       %.1f ± %.1f years\n", mean(data$age_mean), sd(data$age_mean)))
+cat(sprintf("  Female:    %.1f%%\n", mean(data$female_pct) * 100))
+cat(sprintf("  BMI:       %.1f ± %.1f\n", mean(data$bmi_mean), sd(data$bmi_mean)))
+cat(sprintf("  Charlson:  %.1f ± %.1f\n\n", mean(data$charlson), sd(data$charlson)))
+
+cat("Target population:\n")
+cat(sprintf("  Age:       %.0f years\n", target$age_mean))
+cat(sprintf("  Female:    %.0f%%\n", target$female_pct * 100))
+cat(sprintf("  BMI:       %.0f\n", target$bmi_mean))
+cat(sprintf("  Charlson:  %.1f\n", target$charlson))
+```
+
+### Step 3: Check if Transportability is Appropriate
+
+Before computing weights, use diagnostic tools:
+
+```{r check-appropriate, eval=FALSE}
+# Check if transportability is recommended
+check <- check_transportability(data, target, min_studies = 10)
+
+cat(sprintf("\nRecommendation: %s\n", check$recommendation))
+cat(sprintf("Reason: %s\n", check$reason))
+
+# View standardized differences
+cat("\nStandardized differences (target vs sample):\n")
+print(check$metrics$standardized_differences)
+```
+
+Expected output:
+```
+Recommendation: RECOMMENDED
+Reason: All criteria met for transportability adjustment
+
+Standardized differences (target vs sample):
+  age_mean: 2.80 SD  (large difference)
+  female_pct: 1.00 SD (large difference)
+  bmi_mean: 0.67 SD  (medium difference)
+  charlson: 1.13 SD  (large difference)
+```
+
+### Step 4: Compute Transportability Weights
+
+```{r compute-weights, eval=FALSE}
+# Compute entropy balancing weights
+weights <- compute_transport_weights(
+  data = data,
+  target_population = target,
+  truncation = 0.05  # Truncate top/bottom 5% to prevent extreme weights
+)
+
+# Diagnose weight quality
+weight_diagnostics <- diagnose_weights(weights, data)
+cat(sprintf("Weight assessment: %s\n", weight_diagnostics$assessment))
+cat(sprintf("Effective sample size: %.1f (%.1f%% of original)\n",
+            weight_diagnostics$metrics$effective_sample_size,
+            weight_diagnostics$metrics$ess_percentage))
+```
+
+### Step 5: Fit Meta-Analyses (Unadjusted vs Transported)
+
+```{r fit-models, eval=FALSE}
+# Unadjusted meta-analysis (sample population)
+ma_unadjusted <- rma(yi, vi, data = data, method = "REML")
+
+# Transportability-adjusted meta-analysis (target population)
+ma_transported <- rma(yi, vi, data = data, weights = weights, method = "REML")
+
+# Compare results
+cat("\nUNADJUSTED (Sample Population):\n")
+cat(sprintf("  Log OR:     %.3f (95%% CI: %.3f to %.3f)\n",
+            ma_unadjusted$beta[1], ma_unadjusted$ci.lb, ma_unadjusted$ci.ub))
+cat(sprintf("  Odds Ratio: %.3f (95%% CI: %.3f to %.3f)\n",
+            exp(ma_unadjusted$beta[1]), exp(ma_unadjusted$ci.lb), exp(ma_unadjusted$ci.ub)))
+
+cat("\nTRANSPORTED (Target Population):\n")
+cat(sprintf("  Log OR:     %.3f (95%% CI: %.3f to %.3f)\n",
+            ma_transported$beta[1], ma_transported$ci.lb, ma_transported$ci.ub))
+cat(sprintf("  Odds Ratio: %.3f (95%% CI: %.3f to %.3f)\n",
+            exp(ma_transported$beta[1]), exp(ma_transported$ci.lb), exp(ma_transported$ci.ub)))
+
+# Interpretation
+cat("\nINTERPRETATION:\n")
+if (ma_transported$beta[1] > ma_unadjusted$beta[1]) {
+  cat("  Effect is weaker in the target population (elderly, comorbid patients)\n")
+} else {
+  cat("  Effect is stronger in the target population (elderly, comorbid patients)\n")
+}
+```
+
+### Step 6: Assess Covariate Balance
+
+Check that weighting achieved target population characteristics:
+
+```{r balance, eval=FALSE}
+balance <- assess_covariate_balance(data, target, weights)
+
+cat("\nCOVARIATE BALANCE:\n")
+print(balance[, c("covariate", "target", "unweighted_mean", "weighted_mean",
+                  "std_diff_unweighted", "std_diff_weighted", "balance_achieved")])
+```
+
+Expected output showing balance achieved:
+```
+  covariate  target  unweighted_mean  weighted_mean  std_diff_unw  std_diff_w  balance_achieved
+  age_mean   72.0    58.1            71.9           2.78          0.02        TRUE
+  female_pct  0.60    0.45            0.59           1.00          0.07        TRUE
+  bmi_mean   29.0    26.9            28.9           0.70          0.03        TRUE
+  charlson    3.5     1.8             3.48          1.13          0.01        TRUE
+```
+
+### Step 7: Generate Full Diagnostic Report
+
+```{r full-report, eval=FALSE}
+# Comprehensive report
+report <- transportability_report(data, target, weights)
+
+# The report prints detailed diagnostics and returns them invisibly
+```
+
+## Example 2: When NOT to Use Transportability
+
+Let's see an example where transportability is not recommended:
+
+```{r no-transport-example, eval=FALSE}
+# Scenario: Target population very similar to sample
+data_similar <- data  # Same data as before
+
+target_similar <- list(
+  age_mean = 59,     # Very close to sample mean (58)
+  female_pct = 0.46, # Very close to sample (0.45)
+  bmi_mean = 27,     # Same as sample
+  charlson = 1.9     # Very close to sample (1.8)
+)
+
+check_similar <- check_transportability(data_similar, target_similar)
+cat(sprintf("Recommendation: %s\n", check_similar$recommendation))
+cat(sprintf("Reason: %s\n", check_similar$reason))
+```
+
+Expected output:
+```
+Recommendation: OPTIONAL (may not improve estimates)
+Reason: Target population similar to sample (transportability may not be needed)
+```
+
+## Example 3: Integration with cbamm_auto()
+
+You can use transportability with the automated workflow:
+
+```{r cbamm-auto-example, eval=FALSE}
+# Prepare data with 2x2 counts
+transport_data <- data.frame(
+  study = data$study,
+  ai = data$ai,
+  bi = data$bi,
+  ci = data$ci,
+  di = data$di,
+  age_mean = data$age_mean,
+  female_pct = data$female_pct,
+  bmi_mean = data$bmi_mean,
+  charlson = data$charlson
+)
+
+# Run automated meta-analysis with transportability
+results <- cbamm_auto(
+  data = transport_data,
+  pathway = "standard",
+  target_population = target,
+  verbose = TRUE
+)
+
+# Results automatically adjusted for target population
+summary(results)
+```
+
+## Interpreting Results
+
+### Understanding Effect Modification
+
+Transportability assumes treatment effects vary by patient characteristics. For example:
+
+- **Age effect**: Older patients may have weaker/stronger treatment response
+- **Comorbidity effect**: Sicker patients may benefit more/less
+- **Sex effect**: Treatment efficacy may differ by sex
+
+When you transport from a younger, healthier sample to an older, sicker target:
+
+- If effects are **stronger** in sicker patients → transported OR moves **away** from 1.0
+- If effects are **weaker** in sicker patients → transported OR moves **toward** 1.0
+
+### Sensitivity Analysis
+
+Always conduct sensitivity analyses:
+
+```{r sensitivity, eval=FALSE}
+# 1. Try different truncation levels
+weights_no_trunc <- compute_transport_weights(data, target, truncation = 0)
+weights_high_trunc <- compute_transport_weights(data, target, truncation = 0.10)
+
+ma_no_trunc <- rma(yi, vi, data = data, weights = weights_no_trunc, method = "REML")
+ma_high_trunc <- rma(yi, vi, data = data, weights = weights_high_trunc, method = "REML")
+
+# 2. Compare with meta-regression (requires individual covariate data)
+# This is the "gold standard" if you have patient-level data
+ma_metareg <- rma(yi, vi, mods = ~ age_mean + female_pct + bmi_mean + charlson,
+                  data = data, method = "REML")
+
+# 3. Assess robustness to unmeasured confounding
+# If results are highly sensitive, be cautious about causal interpretation
+```
+
+## Reporting Transportability Analysis
+
+When reporting transportability results, include:
+
+### Methods Section
+
+> "To adjust pooled estimates for our target population (Medicare beneficiaries),
+> we applied transportability analysis using entropy balancing (Hainmueller 2012).
+> Studylevel covariate data (age, sex, BMI, Charlson comorbidity index) were reweighted
+> to match target population characteristics. Weights were truncated at the 5th and 95th
+> percentiles to prevent extreme influence from any single study. Covariate balance
+> was assessed using standardized differences, with values <0.1 indicating good balance."
+
+### Results Section
+
+> "The unadjusted pooled odds ratio was 0.65 (95% CI: 0.52-0.81) based on the study
+> sample (mean age 58 years, 45% female, mean Charlson score 1.8). After transportability
+> adjustment to our target Medicare population (mean age 72 years, 60% female, mean
+> Charlson score 3.5), the transported odds ratio was 0.71 (95% CI: 0.55-0.92),
+> suggesting a somewhat weaker treatment effect in elderly, multimorbid patients.
+> All four covariates achieved good balance (standardized differences <0.1) after
+> weighting, with an effective sample size of 12.3 studies (82% of original)."
+
+### Supplementary Materials
+
+Include:
+
+1. Table of study characteristics (before/after weighting)
+2. Forest plot comparing unadjusted vs transported estimates
+3. Sensitivity analyses with different truncation levels
+4. Covariate balance assessment table
+
+## Limitations and Caveats
+
+### Important Assumptions
+
+Transportability relies on:
+
+1. **Correct covariates measured**: Effect modification must be captured by measured variables
+2. **No unmeasured confounding**: If important effect modifiers are unmeasured, bias remains
+3. **Consistent estimand**: Treatment definition consistent across studies
+4. **Positivity**: Sample includes some studies similar to target (no extreme extrapolation)
+
+### When Results May Be Unreliable
+
+- **Extreme extrapolation**: Target >2 SD from sample on key covariates
+- **Small sample**: <10 studies leads to unstable weights
+- **High weight concentration**: Effective N <50% of original suggests overreliance on few studies
+- **No effect heterogeneity**: If I² low, transportability unlikely to help (and may add noise)
+
+## Further Reading
+
+- **Hainmueller J.** (2012). Entropy balancing for causal effects. *Political Analysis*, 20(1), 25-46.
+- **Stuart EA, et al.** (2011). Assessing generalizability using propensity scores. *J R Stat Soc A*, 174(2), 369-386.
+- **Dahabreh IJ, et al.** (2019). Generalizing trial results to eligible individuals. *Biometrics*, 75(2), 685-694.
+- **Lesko CR, et al.** (2017). Generalizing study results: A potential outcomes perspective. *Epidemiology*, 28(4), 553-561.
+
+## Validation
+
+CBAMMR's transportability implementation has been validated through:
+
+1. **12 comprehensive tests** (see `tests/testthat/test-transportability.R`)
+2. **Simulation studies** showing method recovers known ground truth effects
+3. **Covariate balance verification** confirming entropy balancing works as expected
+
+For full validation protocol and results, see:
+- `TRANSPORTABILITY_VALIDATION_PROTOCOL.md`
+- `validation/mini_transportability_validation.R`
+
+## Getting Help
+
+If you have questions about transportability analysis:
+
+1. Check diagnostic messages from `check_transportability()`
+2. Generate full report with `transportability_report()`
+3. Review validation studies in `validation/` directory
+4. Open an issue on GitHub with reproducible example
+
+## Summary
+
+**Transportability analysis is powerful but requires careful application:**
+
+✓ Use diagnostic tools before applying weights
+✓ Assess covariate balance after weighting
+✓ Check weight quality (effective sample size, weight ratios)
+✓ Conduct sensitivity analyses
+✓ Report methods and assumptions transparently
+✓ Acknowledge limitations in interpretation
+
+When used appropriately, transportability helps answer the critical question:
+*"What would the treatment effect be in MY population?"*
