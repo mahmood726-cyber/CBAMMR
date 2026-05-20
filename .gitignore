@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.ipynb_checkpoints/
+.DS_Store
+
+# Large raw dumps are not checked in by default; remove these lines
+# if you want to version the snapshots.
+data/raw/**/*.json
+data/raw/**/*.ndjson
+!data/raw/**/.gitkeep
