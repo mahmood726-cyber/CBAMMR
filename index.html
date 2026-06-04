@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bayesian Normal-Normal Meta-Analysis</title>
+<meta property="og:title" content="Bayesian Normal-Normal Meta-Analysis">
+<meta property="og:description" content="Offline, dependency-free fully Bayesian random-effects meta-analysis by grid approximation: half-Cauchy prior on tau, flat prior on mu, marginal mu posterior with 95% credible and prediction intervals.">
+<meta property="og:type" content="website">
+<style>
+  :root{
+    --c-ink:#1a1a1a; --c-ink-2:#555a5f; --c-annot:#7a8086; --c-grid:#e7e9ec;
+    --c-axis:#c2c6cb; --c-null:#9aa0a6; --c-estimate:#1a1a1a; --c-pi:#b9c2cb;
+    --t-font-serif:Georgia,'Times New Roman',serif;
+    --t-font-sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    --accent:#2563a8; --bg:#fbfbfa; --card:#ffffff; --line:#e2e4e7; --warn:#9a6a00;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--c-ink);font-family:var(--t-font-sans);line-height:1.5}
+  header{padding:26px 22px 14px;border-bottom:1px solid var(--line);background:var(--card)}
+  h1{margin:0;font-family:var(--t-font-serif);font-size:25px;font-weight:600}
+  .sub{color:var(--c-ink-2);font-size:14px;margin-top:4px;max-width:780px}
+  main{max-width:1080px;margin:0 auto;padding:20px 22px 60px;display:grid;gap:20px;grid-template-columns:1fr;}
+  @media(min-width:880px){main{grid-template-columns:360px 1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px}
+  .card h2{margin:0 0 12px;font-size:15px;text-transform:uppercase;letter-spacing:.04em;color:var(--c-ink-2)}
+  label{display:block;font-size:13px;color:var(--c-ink-2);margin:10px 0 3px}
+  input,select,textarea{width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:7px;font-size:14px;font-family:inherit;background:#fff}
+  textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.45;min-height:150px;white-space:pre;resize:vertical}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .hint{font-size:12px;color:var(--c-annot);margin-top:3px}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:4px}
+  th,td{text-align:right;padding:7px 8px;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  thead th{font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:var(--c-annot);border-bottom:1.5px solid var(--c-axis)}
+  td.measure{font-weight:600}
+  .muted{color:var(--c-annot)}
+  .warns{margin-top:14px}
+  .warn{background:#fff8ea;border:1px solid #f0e0b8;color:var(--warn);font-size:13px;border-radius:7px;padding:8px 10px;margin-top:7px}
+  .err{background:#fdeeee;border:1px solid #f0c5c5;color:#a23a3a;font-size:13px;border-radius:7px;padding:8px 10px;margin-top:7px}
+  svg{width:100%;height:auto;display:block}
+  .figwrap{margin-top:6px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:7px;padding:10px 14px;font-size:14px;cursor:pointer;font-family:inherit;margin-top:14px;width:100%}
+  button.sec{background:#eef2f6;color:var(--c-ink);margin-top:8px}
+  .prov{font-size:12px;color:var(--c-annot);margin-top:18px;border-top:1px solid var(--line);padding-top:12px}
+  code{background:#f1f3f5;padding:1px 5px;border-radius:4px;font-size:12px}
+  footer{max-width:1080px;margin:0 auto;padding:0 22px 40px;color:var(--c-annot);font-size:12px}
+  .copybtn{font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Bayesian Normal-Normal Meta-Analysis</h1>
+  <div class="sub">A fully Bayesian random-effects meta-analysis by grid approximation. Heterogeneity SD <i>&tau;</i> gets a half-Cauchy(0, <i>s</i>) prior and the overall mean <i>&mu;</i> a flat prior; the app returns the marginal posterior of <i>&mu;</i> with its 95% credible interval, plus a Bayesian prediction interval for a future study. Fully offline &mdash; no network, no dependencies.</div>
+</header>
+<main>
+  <section class="card" id="inputs">
+    <h2>Input</h2>
+    <label for="data">Studies &mdash; one per line: <code>label, estimate, variance</code></label>
+    <textarea id="data" spellcheck="false"></textarea>
+    <div class="hint">Variance is the <i>squared</i> standard error of the estimate (vi = SE&sup2;). Use the analysis scale; for ratios enter log RR/OR/HR and toggle log below.</div>
+    <div class="row3">
+      <div><label for="scale">Half-Cauchy scale <i>s</i></label><input id="scale" type="number" step="any" min="0" value="0.5"></div>
+      <div><label for="level">Credible level</label>
+        <select id="level"><option value="0.95">95%</option><option value="0.90">90%</option><option value="0.99">99%</option></select></div>
+      <div><label for="log">Axis</label>
+        <select id="log"><option value="0">Identity</option><option value="1">Log (ratios)</option></select></div>
+    </div>
+    <div class="hint">Larger <i>s</i> = more diffuse prior on between-study heterogeneity (default 0.5). A wide <i>s</i> makes the posterior mean of &mu; approach the frequentist REML estimate.</div>
+    <button id="run">Run analysis</button>
+    <button id="ex" class="sec">Load example</button>
+    <div class="prov">
+      <b>Provenance.</b> Model <code>yi ~ N(theta_i, vi)</code>, <code>theta_i ~ N(mu, tau&sup2;)</code>;
+      prior <code>tau ~ half-Cauchy(0, s)</code>, <code>mu</code> flat. The marginal posterior of &mu; is a
+      mixture over the &tau; grid of <code>N(muHat(tau), V(tau))</code> weighted by <code>p(tau|y)</code>;
+      intervals are density quantiles, not mean &plusmn; <i>z</i>&middot;SE. Grid approximation is used because the
+      target is 1&ndash;2 parameters and unimodal.
+    </div>
+  </section>
+
+  <section>
+    <div class="card">
+      <h2>Posterior summary</h2>
+      <table id="results"><tbody></tbody></table>
+      <button id="copy" class="sec copybtn">Copy as TSV</button>
+      <div class="warns" id="warns"></div>
+    </div>
+    <div class="card figwrap" style="margin-top:20px">
+      <h2>Posterior density of &mu;</h2>
+      <svg id="density" aria-label="Posterior density of the overall mean mu"></svg>
+      <div class="hint" id="figcap"></div>
+    </div>
+  </section>
+</main>
+<footer>
+  Bayesian Normal-Normal Meta-Analysis &middot; single-file, offline &middot; density rendering by the e156 chart-kit &middot;
+  MIT licensed. Verify any posterior against your primary analysis before reporting.
+</footer>
+
+<script src="chartkit.js"></script>
+<script src="engine.js"></script>
+<script>
+(function(){
+  var E = window.CBAMMR;
+  var $ = function(id){ return document.getElementById(id); };
+  var EXAMPLE = [
+    'Study 1, 0.00, 0.020',
+    'Study 2, 0.52, 0.030',
+    'Study 3, -0.30, 0.015',
+    'Study 4, 0.81, 0.040',
+    'Study 5, 0.18, 0.020',
+    'Study 6, 0.95, 0.050',
+    'Study 7, -0.12, 0.018',
+    'Study 8, 0.60, 0.030',
+    'Study 9, 0.35, 0.025',
+    'Study 10, 0.05, 0.012'
+  ].join('\n');
+
+  function fmt(v){ if(v==null||!isFinite(v)) return '—'; var a=Math.abs(v); return a>=100?v.toFixed(1):a>=10?v.toFixed(3):v.toFixed(4); }
+
+  // parse "label, estimate, variance" lines -> {labels, yi, vi} or {error}
+  function parse(text){
+    var labels=[], yi=[], vi=[];
+    var lines=text.split(/\r?\n/);
+    for(var i=0;i<lines.length;i++){
+      var ln=lines[i].trim();
+      if(ln==='') continue;
+      var parts=ln.split(',');
+      if(parts.length<3) return {error:'Line '+(i+1)+': need "label, estimate, variance".'};
+      var lab=parts.slice(0,parts.length-2).join(',').trim();
+      var est=parseFloat(parts[parts.length-2]);
+      var v=parseFloat(parts[parts.length-1]);
+      if(!isFinite(est)) return {error:'Line '+(i+1)+': estimate is not a number.'};
+      if(!isFinite(v)||!(v>0)) return {error:'Line '+(i+1)+': variance must be a positive number.'};
+      labels.push(lab||('Study '+(labels.length+1))); yi.push(est); vi.push(v);
+    }
+    if(yi.length<2) return {error:'Need at least 2 studies.'};
+    return {labels:labels, yi:yi, vi:vi};
+  }
+
+  var lastRows=[];
+  function render(){
+    var w=$('warns'); w.innerHTML='';
+    var parsed=parse($('data').value);
+    if(parsed.error){ showError(parsed.error); clearFig(); return; }
+    var scale=parseFloat($('scale').value);
+    if(!isFinite(scale)||!(scale>0)){ showError('Half-Cauchy scale must be a positive number.'); clearFig(); return; }
+    var level=parseFloat($('level').value);
+    var isLog=$('log').value==='1';
+
+    var r=E.bayesMA(parsed.yi, parsed.vi, {scale:scale, level:level});
+    if(r.error){ showError(r.error); clearFig(); return; }
+
+    // results table
+    var tb=$('results').querySelector('tbody'); tb.innerHTML=''; lastRows=[];
+    function back(v){ return isLog ? Math.exp(v) : v; }
+    function row(name, point, lo, hi){
+      var tr=document.createElement('tr');
+      var ciTxt = (lo==null) ? '' : (fmt(back(lo))+' to '+fmt(back(hi)));
+      tr.innerHTML='<td class="measure">'+name+'</td><td>'+(point==null?'':fmt(back(point)))+'</td><td>'+ciTxt+'</td>';
+      tb.appendChild(tr);
+      lastRows.push([name, point==null?'':fmt(back(point)), lo==null?'':fmt(back(lo)), hi==null?'':fmt(back(hi))]);
+    }
+    var pct=Math.round(level*100);
+    row('Posterior mean &mu;', r.mu.mean, null, null);
+    row('Posterior median &mu;', r.mu.median, null, null);
+    row(pct+'% credible interval', null, r.mu.crI.lo, r.mu.crI.hi);
+    row(pct+'% prediction interval', r.pred.mean, r.pred.crI.lo, r.pred.crI.hi);
+    row('&tau; (posterior median)', r.tauSummary.median, null, null);
+    row('&mu; (fixed-effect, &tau;=0)', r.muHatFE, null, null);
+
+    // warnings
+    (r.warnings||[]).forEach(function(t){ var d=document.createElement('div'); d.className='warn'; d.textContent=t; w.appendChild(d); });
+
+    drawDensity(r, isLog, level);
+  }
+
+  function drawDensity(r, isLog, level){
+    var svg=$('density'), cap=$('figcap');
+    var pct=Math.round(level*100);
+    var data={
+      grid: r.mu.grid,
+      density: r.mu.density,
+      cri: { lo: r.mu.crI.lo, hi: r.mu.crI.hi },
+      median: r.mu.median,
+      prior: null
+    };
+    var opts={
+      log: isLog,
+      measure: isLog ? 'ratio' : 'mu',
+      null: isLog ? 0 : 0,
+      xlabel: isLog ? 'overall effect (log scale, null = 1)' : 'overall mean μ',
+      claim: 'Posterior of the overall mean',
+      estimand: 'Bayesian random-effects μ; shaded band = '+pct+'% credible interval'
+    };
+    try {
+      window.ChartKit.renderDensity(svg, data, opts);
+      cap.textContent='Marginal posterior of μ (mixture over the τ grid). Shaded band: '+pct+'% credible interval. Vertical line: posterior median.';
+    } catch(e){
+      cap.textContent='Density preview unavailable: '+e.message;
+    }
+  }
+
+  function showError(msg){
+    var w=$('warns'); var d=document.createElement('div'); d.className='err'; d.textContent=msg; w.appendChild(d);
+    $('results').querySelector('tbody').innerHTML='';
+  }
+  function clearFig(){ var svg=$('density'); while(svg.firstChild) svg.removeChild(svg.firstChild); $('figcap').textContent=''; }
+
+  $('run').addEventListener('click', render);
+  $('copy').addEventListener('click', function(){
+    var tsv='quantity\tpoint\tlo\thi\n'+lastRows.map(function(r){return r.join('\t');}).join('\n');
+    if(navigator.clipboard) navigator.clipboard.writeText(tsv);
+    this.textContent='Copied!'; var b=this; setTimeout(function(){b.textContent='Copy as TSV';},1200);
+  });
+  $('ex').addEventListener('click', function(){
+    $('data').value=EXAMPLE; $('scale').value='0.5'; $('level').value='0.95'; $('log').value='0'; render();
+  });
+
+  // seed with the example so first paint shows real output
+  $('data').value=EXAMPLE;
+  render();
+})();
+</script>
+</body>
+</html>
